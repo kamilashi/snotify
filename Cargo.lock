@@ -1426,6 +1426,8 @@ dependencies = [
  "rand",
  "reqwest",
  "rspotify",
+ "serde",
+ "serde_json",
  "tokio",
  "tokio-stream",
 ]
