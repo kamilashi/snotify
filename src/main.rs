@@ -1,8 +1,6 @@
 
-use snotify::UserData;
 use tokio;
 use rspotify::clients::OAuthClient;
-use std::collections::HashMap;
 use std::env;
 
 #[tokio::main]
@@ -34,7 +32,7 @@ async fn main()   {
 
     let (song, id) = snotify::get_song(item).expect("Could not retrieve song data");
 
-    if(songs.contains_key(&id)) {
+    if songs.contains_key(&id) {
         println!("Currently playing:");
         let song = songs.get(&id).expect("should exist");
         song.print_preview("Currently playing:");

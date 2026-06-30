@@ -4,13 +4,9 @@ use rspotify::clients::OAuthClient;
 use std::collections::HashMap;
 use std::env;
 
-/* fn try_log_song_data(name: &str, song: snotify::Song){
-    std::fs::write("{str}.json", serde_json::to_string_pretty(&song)?)?;
-} */
-
 #[tokio::main]
 async fn main()  {
-    std::fs::create_dir_all(snotify::DATA_PATH);
+    std::fs::create_dir_all(snotify::DATA_PATH).unwrap();
     
     let spotify = snotify::authorize().await;
 
@@ -47,7 +43,7 @@ async fn main()  {
     let path = snotify::make_playlist_path(&args[1]);
     let mut songs = match snotify::load_songs(&path) {
         Some(table) => {
-            if(table.contains_key(&id)) {
+            if table.contains_key(&id) {
                 let song = table.get(&id).expect("should exist");
                 song.print_preview("Overwriting data for song:");
             }
