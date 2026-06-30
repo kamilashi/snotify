@@ -39,7 +39,7 @@ async fn main()  {
 
     // argument 0 is the binary path, so we skip it
     let path = snotify::make_playlist_path(&args[1]);
-    let mut songs = match snotify::load_songs(&path) {
+    let mut songs = match snotify::load_playlist(&path) {
         Some(table) => {
             if table.contains_key(&id) {
                 let song = table.get(&id).expect("should exist");
@@ -51,8 +51,5 @@ async fn main()  {
 
     songs.insert(id, song);
 
-    std::fs::write(
-        path,
-        serde_json::to_string_pretty(&songs).expect("Could not serialize to .json")
-    ).expect("Could not write to file");
+    snotify::save_playlist(&path, &songs);
 }

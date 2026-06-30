@@ -5,13 +5,13 @@ use serde::{Serialize, Deserialize};
 
 pub const DATA_PATH: &str = "data/";
 
-#[derive(Serialize, Deserialize, Debug)]
+#[derive(Serialize, Deserialize, Debug, PartialEq)]
 pub struct UserData {
     pub key: String,
     pub value: String,
 }
 
-#[derive(Serialize, Deserialize, Debug)]
+#[derive(Serialize, Deserialize, Debug, PartialEq)]
 pub struct Song {
     pub name: Option<String>,
     pub artist: Option<String>,
@@ -62,12 +62,52 @@ pub fn get_song(item: PlayableItem) -> Option<(Song, String)>{
     }
 }
 
-pub fn load_songs(path: &str) -> Option<HashMap<String, Song>> {
+pub fn load_playlist(path: &str) -> Option<HashMap<String, Song>> {
     let file = std::fs::read_to_string(path).ok()?;
     let map: HashMap<String, Song> = serde_json::from_str(&file).ok()?;
     Some(map)
 }
 
+pub fn save_playlist(path: &str, songs: &HashMap<String, Song>){
+    std::fs::write(
+        path,
+        serde_json::to_string_pretty(songs).expect("Could not serialize to .json")
+    ).expect("Could not write to file");
+}
+
 pub fn make_playlist_path(name: &str) -> String{
     format!("{}{}.json", DATA_PATH, name)
+}
+
+#[cfg(test)]
+mod tests {
+    use super::*;
+
+    #[test]
+    fn playlist_save_and_load_test() {
+        let mut songs: HashMap<String,Song> = HashMap::new();
+        let id = String::from("id");
+        let song = Song{
+            name: Some(String::from("test_name")),
+            artist: None,
+            duration_ms: Some(300),
+            user_data: vec![ 
+                UserData{key: "key1".to_string(), value: "value1".to_string()},
+                UserData{key: "key2".to_string(), value: "value2".to_string()},
+            ],
+        };
+
+        songs.insert(id,song);
+
+        let playlist_name = "test_playlist";
+        let path = make_playlist_path(playlist_name);
+
+        save_playlist(&path, &songs);
+        
+        let songs_desered = load_playlist(&path).unwrap();
+        
+        assert_eq!(songs, songs_desered);
+
+        std::fs::remove_file(path).expect("Could not clean up file in playlist_save_and_load_test");
+    }
 }
