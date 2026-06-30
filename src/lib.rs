@@ -13,16 +13,17 @@ pub struct UserData {
 
 #[derive(Serialize, Deserialize, Debug)]
 pub struct Song {
-    pub name: String,
-    pub artist: String,
+    pub name: Option<String>,
+    pub artist: Option<String>,
+    pub duration_ms: Option<u64>,
     pub user_data: Vec<UserData>,
 }
 
 impl Song {
     pub fn print_preview(&self, prefix: &str){
         println!("{}", prefix);
-        println!("  name: {}", self.name);
-        println!("  artist: {}",self.artist);
+        println!("  name: {}", self.name.as_deref().unwrap_or("unknown"));
+        println!("  artist: {}",self.artist.as_deref().unwrap_or("unknown"));
 
         for key_value in &self.user_data {
             println!(" {} : {}", key_value.key, key_value.value);
@@ -34,9 +35,7 @@ pub async fn authorize() -> AuthCodeSpotify {
     env_logger::init();
 
     let creds = Credentials::from_env().unwrap();
-
     let oauth = OAuth::from_env(scopes!("user-read-currently-playing")).unwrap();
-
     let spotify = AuthCodeSpotify::new(creds, oauth);
 
     let url = spotify.get_authorize_url(false).unwrap();
@@ -51,8 +50,9 @@ pub fn get_song(item: PlayableItem) -> Option<(Song, String)>{
             let id: String = object["id"].as_str()?.to_string();
 
             let song = Song {
-                name: object["name"].as_str().unwrap_or("unknown").to_string(),
-                artist: object["artists"][0]["name"].as_str().unwrap_or("unknown").to_string(),
+                name: object["name"].as_str().map(String::from),
+                artist: object["artists"][0]["name"].as_str().map(String::from),
+                duration_ms: object["duration_ms"].as_u64(),
                 user_data: Vec::new()
             };
             Some((song, id))
