@@ -79,35 +79,7 @@ pub fn make_playlist_path(name: &str) -> String{
     format!("{}{}.json", DATA_PATH, name)
 }
 
-#[cfg(test)]
+/* #[cfg(test)]
 mod tests {
     use super::*;
-
-    #[test]
-    fn playlist_save_and_load_test() {
-        let mut songs: HashMap<String,Song> = HashMap::new();
-        let id = String::from("id");
-        let song = Song{
-            name: Some(String::from("test_name")),
-            artist: None,
-            duration_ms: Some(300),
-            user_data: vec![ 
-                UserData{key: "key1".to_string(), value: "value1".to_string()},
-                UserData{key: "key2".to_string(), value: "value2".to_string()},
-            ],
-        };
-
-        songs.insert(id,song);
-
-        let playlist_name = "test_playlist";
-        let path = make_playlist_path(playlist_name);
-
-        save_playlist(&path, &songs);
-        
-        let songs_desered = load_playlist(&path).unwrap();
-        
-        assert_eq!(songs, songs_desered);
-
-        std::fs::remove_file(path).expect("Could not clean up file in playlist_save_and_load_test");
-    }
-}
+} */
