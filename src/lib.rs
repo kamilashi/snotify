@@ -32,8 +32,6 @@ impl Song {
 }
 
 pub async fn authorize() -> AuthCodeSpotify {
-    env_logger::init();
-
     let creds = Credentials::from_env().unwrap();
     let oauth = OAuth::from_env(scopes!("user-read-currently-playing")).unwrap();
     let spotify = AuthCodeSpotify::new(creds, oauth);

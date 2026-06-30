@@ -6,6 +6,7 @@ use std::env;
 
 #[tokio::main]
 async fn main()  {
+    env_logger::init();
     std::fs::create_dir_all(snotify::DATA_PATH).unwrap();
     
     let spotify = snotify::authorize().await;
