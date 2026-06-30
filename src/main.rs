@@ -38,18 +38,16 @@ async fn main()   {
                 let item = context.item.expect("Could not get item from the context");
                 let (song, id) = snotify::get_song(item).expect("Could not retrieve song data");
 
-                if current_id.eq(&id) {        
-                    continue;
-                }
+                if !current_id.eq(&id) {        
+                    current_id = id;
 
-                current_id = id;
-
-                if songs.contains_key(&current_id) {
-                    let song = songs.get(&current_id).expect("should exist");
-                    song.print_preview("Currently playing:");
-                }
-                else {
-                    song.print_preview("Could not find database entry for song:");
+                    if songs.contains_key(&current_id) {
+                        let song = songs.get(&current_id).expect("should exist");
+                        song.print_preview("Currently playing:");
+                    }
+                    else {
+                        song.print_preview("Could not find database entry for song:");
+                    }
                 }
 
                 let sleep_for_ms = 3000_u64;

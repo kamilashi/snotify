@@ -1,7 +1,7 @@
 use snotify;
 use std::collections::HashMap;
  
- #[test]
+#[test]
 fn save_and_load_playlist_test() {
     let mut songs: HashMap<String, snotify::Song> = HashMap::new();
     let id = String::from("id");

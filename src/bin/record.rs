@@ -12,7 +12,7 @@ async fn main()  {
     let spotify = snotify::authorize().await;
     let track = spotify.current_playing(None, None::<Vec<_>>).await.unwrap();
 
-    println!("{:#?}", track);
+    dbg!(&track);
 
     let context = track.expect("Could not get context");
     let item = context.item.expect("Could not get item from the context");
