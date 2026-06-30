@@ -38,7 +38,7 @@ async fn main()  {
 
     // argument 0 is the binary path, so we skip it
     let path = snotify::make_playlist_path(&args[1]);
-    let songs = match snotify::load_songs(&path) {
+    let mut songs = match snotify::load_songs(&path) {
         Some(table) => {
             if table.contains_key(&id) {
                 let song = table.get(&id).expect("should exist");
@@ -47,6 +47,8 @@ async fn main()  {
         table},
         None => HashMap::new()
     };
+
+    songs.insert(id, song);
 
     std::fs::write(
         path,
