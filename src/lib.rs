@@ -11,7 +11,7 @@ pub struct UserData {
     pub value: String,
 }
 
-#[derive(Serialize, Deserialize, Debug, PartialEq)]
+#[derive(Serialize, Deserialize, Debug, PartialEq, Clone)]
 pub struct Song {
     pub name: Option<String>,
     pub artist: Option<String>,
@@ -82,6 +82,7 @@ pub fn make_playlist_path(name: &str) -> String{
 mod mock_engine {
     use std::time::Duration;
     use std::error::Error;
+    use tokio::sync::Mutex;
 
 use crate::Song;
 
@@ -91,11 +92,15 @@ use crate::Song;
         custom_artist: Option<String>,
         custom_period_ms: Option<u64>,
     }
+
+    struct CurrentSong{
+        song: super::Song,
+        id: String
+    }
     
     pub struct Engine{
         config : Config,
-        current_song: super::Song,
-        current_song_id: String,
+        current_song: tokio::sync::Mutex<CurrentSong>,
     }
 
     impl Engine {
@@ -104,11 +109,11 @@ use crate::Song;
         const DEFAULT_SONG_ARTIST : &str = "mock_artist";
         const DEFAULT_SONG_ID : &str = "0";
 
-        fn genegare_default_song() -> super::Song {
+        fn genegare_default_song(config: &Config) -> super::Song {
             super::Song{
-                name: Some(String::from(Self::DEFAULT_SONG_NAME)),
-                artist: Some(String::from(Self::DEFAULT_SONG_ARTIST)),
-                duration_ms: Some(Self::DEFAULT_SONG_DURATION_MS),
+                name: Some(config.custom_name.clone().unwrap_or(String::from(Self::DEFAULT_SONG_NAME))),
+                artist: Some(config.custom_artist.clone().unwrap_or(String::from(Self::DEFAULT_SONG_ARTIST))),
+                duration_ms: Some(config.custom_period_ms.clone().unwrap_or(Self::DEFAULT_SONG_DURATION_MS)),
                 user_data: vec![ 
                     super::UserData{key: "key1".to_string(), value: "value1".to_string()},
                     super::UserData{key: "key2".to_string(), value: "value2".to_string()},
@@ -118,15 +123,25 @@ use crate::Song;
 
         pub fn new(config: Config) -> Engine {
             let engine = Engine {
+                current_song: tokio::sync::Mutex::new( CurrentSong{
+                    song: Self::genegare_default_song(&config),
+                    id: String::from(Self::DEFAULT_SONG_ID)
+                }),
                 config: config,
-                current_song: Self::genegare_default_song(),
-                current_song_id: String::from(Self::DEFAULT_SONG_ID)
             };
             engine
         }
 
+        pub async fn get_song(&self) -> Option<(super::Song, String)> {
+            let current_song = self.current_song.lock().await;
+            let song = (*current_song).song.clone();
+            let id = (*current_song).id.clone();
+            Some((song, id))
+        }
+
         pub async fn run(&mut self) -> Result<(), Box<dyn Error + Send + Sync>>{
-            if let Some(path) = &self.config.playlist_path {
+            tokio::spawn(|| {
+                if let Some(path) = &self.config.playlist_path {
                 let playlist = super::load_playlist(path).expect("Could not load mock playlist.");
 
                 // simulate looping playlist
@@ -139,7 +154,8 @@ use crate::Song;
                         tokio::time::sleep(Duration::from_secs(period_ms.clone())).await;
 
                         {
-                            self.current_song = super::Song{
+                            let mut current_song = self.current_song.lock().await;
+                            (*current_song).song = super::Song{
                                 name: Some(self.config.custom_name.clone().unwrap_or_else(|| {
                                     song.name.clone().unwrap_or(String::from(Self::DEFAULT_SONG_NAME))
                                 }
@@ -151,20 +167,17 @@ use crate::Song;
                                 duration_ms: Some(period_ms),
                                 user_data: song.user_data.clone(),
                             };
-                            self.current_song_id = id.clone();
+                            (*current_song).id = id.clone();
                         }
                     }
                 }
             }
             else{
-                {
-                    if let Some(name_override) = self.config.custom_name.clone() {self.current_song.name = Some(name_override)};
-                    if let Some(artist_override) = self.config.custom_artist.clone() {self.current_song.artist = Some(artist_override)};
-                    if let Some(duration_override) = self.config.custom_period_ms.clone() {self.current_song.duration_ms = Some(duration_override)};
-                }
+                eprintln!("Cannot use run function without an actual playlist to run");
             }
 
             Ok(())
+            })
         }
     }
 }
