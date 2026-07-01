@@ -4,7 +4,6 @@ use std::time::Duration;
 
 #[tokio::main]
 async fn main()   {
-    println!("cargo run --bin record [playlist name] [key1] [key2] ... to update the playlist database");
     env_logger::init();
 
     let args: Vec<String> = env::args().collect();
