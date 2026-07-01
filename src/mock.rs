@@ -1,5 +1,6 @@
 use std::{error::Error, sync::Arc, time::Duration};
 use tokio::sync::watch;
+use super::{*};
 
 pub struct Config{
     pub playlist_path: Option<String>,
@@ -9,29 +10,29 @@ pub struct Config{
 }
 
 struct CurrentSong{
-    song: super::Song,
+    song: Song,
     id: String
 }
 
 pub struct Player{
-    player : Arc<Impl>
+    player_impl : Arc<Impl>
 }
 
 impl Player {
     pub fn new(config: Config) -> Player{
         Player {
-            player: Arc::new(Impl::new(config))
+            player_impl: Arc::new(Impl::new(config))
         }
     }
 
     pub fn start(&self){
-        let player = self.player.clone();
-        tokio::spawn(async move { player.run().await });
+        let player_impl = self.player_impl.clone();
+        tokio::spawn(async move { player_impl.run().await });
         println!("Started mock player player");
     } 
 
-    pub async fn get_currently_playing(&self) -> (super::Song, String) {
-        self.player.get_song().await
+    pub async fn get_currently_playing(&self) -> (Song, String) {
+        self.player_impl.get_song().await
     }
 }
 
@@ -46,14 +47,14 @@ impl Impl {
     const DEFAULT_SONG_ARTIST : &str = "mock_artist";
     const DEFAULT_SONG_ID : &str = "0";
 
-    fn genegare_default_song(config: &Config) -> super::Song {
-        super::Song{
+    fn genegare_default_song(config: &Config) -> Song {
+        Song{
             name: Some(config.custom_name.clone().unwrap_or(String::from(Self::DEFAULT_SONG_NAME))),
             artist: Some(config.custom_artist.clone().unwrap_or(String::from(Self::DEFAULT_SONG_ARTIST))),
             duration_ms: Some(config.custom_period_ms.clone().unwrap_or(Self::DEFAULT_SONG_DURATION_MS)),
             user_data: vec![ 
-                super::UserData{key: "key1".to_string(), value: "value1".to_string()},
-                super::UserData{key: "key2".to_string(), value: "value2".to_string()},
+                UserData{key: "key1".to_string(), value: "value1".to_string()},
+                UserData{key: "key2".to_string(), value: "value2".to_string()},
             ],
         }
     }
@@ -70,7 +71,7 @@ impl Impl {
         }
     }
 
-    async fn get_song(&self) -> (super::Song, String) {
+    async fn get_song(&self) -> (Song, String) {
         let current = self.current_song_channel.borrow();
         (current.song.clone(), current.id.clone())
     }
@@ -78,7 +79,7 @@ impl Impl {
     async fn run(&self) -> Result<(), Box<dyn Error + Send + Sync>>{
         if let Some(path) = &self.config.playlist_path {
             println!("Loading mock playlist {}", path);
-            let playlist = super::load_playlist(path).expect("Could not load mock playlist.");
+            let playlist = load_playlist(path).expect("Could not load mock playlist.");
 
             // simulate looping playlist
             loop{
@@ -91,7 +92,7 @@ impl Impl {
 
                     {
                         let song_update = CurrentSong{
-                            song: super::Song{
+                            song: Song{
                                 name: Some(self.config.custom_name.clone().unwrap_or_else(|| {
                                     song.name.clone().unwrap_or(String::from(Self::DEFAULT_SONG_NAME))
                                 }

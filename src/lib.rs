@@ -1,5 +1,6 @@
 use std::collections::HashMap;
 
+// once there are proper runners this should disintegrate
 pub use rspotify::{AuthCodeSpotify, Credentials, OAuth, model::{CurrentlyPlayingType::Unknown, PlayableItem, track}, prelude::*, scopes};
 use serde::{Serialize, Deserialize};
 
@@ -20,8 +21,8 @@ pub struct Song {
 }
 
 impl Song {
-    pub fn print_preview(&self, prefix: &str){
-        println!("{}", prefix);
+    pub fn print_preview(&self, prefix_msg: &str){
+        println!("{}", prefix_msg);
         println!("  name: {}", self.name.as_deref().unwrap_or("unknown"));
         println!("  artist: {}",self.artist.as_deref().unwrap_or("unknown"));
 
