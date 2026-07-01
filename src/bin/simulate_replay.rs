@@ -1,8 +1,6 @@
 use tokio;
-use rspotify::clients::OAuthClient;
 use std::env;
 use std::time::Duration;
-use rspotify::ClientError;
 
 const MAX_CLIENT_ERROR_COUNT: usize = 5_usize;
 
@@ -23,15 +21,23 @@ async fn main()   {
     assert!(std::path::Path::new(&path).exists(), "Database for playlist {} doesn't exist", &args[1]);
 
     let songs = snotify::load_playlist(&path).expect("Could not load song database");
-    let spotify = snotify::authorize().await;
+
+    let config= snotify::mock::Config {
+        playlist_path: Some(path),
+        custom_artist: None,
+        custom_name: None,
+        custom_period_ms: Some(5000),
+    };
+
+    let mut engine = snotify::mock::Engine::new(config);
+    engine.start();
+
     let mut current_id = String::from("");
     let mut consecutive_client_error_count = 0_usize;
 
     loop {
-        match spotify.current_playing(None, None::<Vec<_>>).await {
-            Ok(track) => {
-                let (song, id) = snotify::get_song(item).expect("Could not retrieve song data");
-
+        match engine.current_playing().await {
+            Some((song, id)) => {
                 if !current_id.eq(&id) {        
                     current_id = id;
 
@@ -47,32 +53,13 @@ async fn main()   {
                 let sleep_for_ms = 3000_u64;
                 tokio::time::sleep(Duration::from_millis(sleep_for_ms)).await;
             },
-            Err(error) => {
+            None => {
                 consecutive_client_error_count+=1;
 
                 if consecutive_client_error_count >= MAX_CLIENT_ERROR_COUNT {
                     println!("Max client error count reached. Stopping the app.");
                     break;
                 }
-
-                println!("{}", error);
-                let mut retry_after_secs: Option<u64> = None;
-
-                if let ClientError::Http(http_err) = &error {
-                    if let rspotify_http::HttpError::StatusCode(response) = &**http_err {
-                        if response.status().as_u16() == 429 {
-                            retry_after_secs = response
-                                .headers()
-                                .get(reqwest::header::RETRY_AFTER)
-                                .and_then(|v| v.to_str().ok())
-                                .and_then(|v| v.parse::<u64>().ok());
-                        }
-                    }
-                }
-
-                let wait_secs = retry_after_secs.unwrap_or(30); 
-                println!("Retrying after {} seconds", wait_secs);
-                tokio::time::sleep(Duration::from_secs(wait_secs)).await;
             }
         }
     }

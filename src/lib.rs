@@ -79,18 +79,15 @@ pub fn make_playlist_path(name: &str) -> String{
     format!("{}{}.json", DATA_PATH, name)
 }
 
-mod mock_engine {
-    use std::time::Duration;
-    use std::error::Error;
-    use tokio::sync::Mutex;
-
-use crate::Song;
+pub mod mock {
+    use std::{error::Error, sync::Arc, time::Duration};
+    use tokio::sync::watch;
 
     pub struct Config{
-        playlist_path: Option<String>,
-        custom_name: Option<String>,
-        custom_artist: Option<String>,
-        custom_period_ms: Option<u64>,
+        pub playlist_path: Option<String>,
+        pub custom_name: Option<String>,
+        pub custom_artist: Option<String>,
+        pub custom_period_ms: Option<u64>,
     }
 
     struct CurrentSong{
@@ -99,11 +96,34 @@ use crate::Song;
     }
     
     pub struct Engine{
-        config : Config,
-        current_song: tokio::sync::Mutex<CurrentSong>,
+        engine : Arc<Impl>
     }
 
     impl Engine {
+        pub fn new(config: Config) -> Engine{
+            let engine = Engine {
+                    engine: Arc::new(Impl::new(config))
+                };
+            engine
+        }
+
+        pub fn start(&mut self){
+            let engine = self.engine.clone();
+            tokio::spawn(async move { engine.run().await });
+            println!("Started mock player engine");
+        } 
+
+        pub async fn current_playing(&self) -> Option<(super::Song, String)> {
+            Some(self.engine.get_song().await)
+        }
+    }
+
+    struct Impl{
+        config : Config,
+        current_song_channel: watch::Sender<CurrentSong>,
+    }
+
+    impl Impl {
         const DEFAULT_SONG_DURATION_MS : u64 = 3000;
         const DEFAULT_SONG_NAME : &str = "mock_name";
         const DEFAULT_SONG_ARTIST : &str = "mock_artist";
@@ -121,27 +141,27 @@ use crate::Song;
             }
         }
 
-        pub fn new(config: Config) -> Engine {
-            let engine = Engine {
-                current_song: tokio::sync::Mutex::new( CurrentSong{
-                    song: Self::genegare_default_song(&config),
-                    id: String::from(Self::DEFAULT_SONG_ID)
-                }),
+        fn new(config: Config) -> Impl {
+            let (tx, _rx) = watch::channel(CurrentSong{
+                song: Self::genegare_default_song(&config),
+                id: String::from(Self::DEFAULT_SONG_ID)
+            });
+
+            let engine = Impl {
+                current_song_channel: tx,
                 config: config,
             };
             engine
         }
 
-        pub async fn get_song(&self) -> Option<(super::Song, String)> {
-            let current_song = self.current_song.lock().await;
-            let song = (*current_song).song.clone();
-            let id = (*current_song).id.clone();
-            Some((song, id))
+        async fn get_song(&self) -> (super::Song, String) {
+            let current = self.current_song_channel.borrow();
+            (current.song.clone(), current.id.clone())
         }
 
-        pub async fn run(&mut self) -> Result<(), Box<dyn Error + Send + Sync>>{
-            tokio::spawn(|| {
-                if let Some(path) = &self.config.playlist_path {
+        async fn run(&self) -> Result<(), Box<dyn Error + Send + Sync>>{
+           if let Some(path) = &self.config.playlist_path {
+                println!("Loading mock playlist {}", path);
                 let playlist = super::load_playlist(path).expect("Could not load mock playlist.");
 
                 // simulate looping playlist
@@ -151,23 +171,28 @@ use crate::Song;
                             song.duration_ms.unwrap_or(Self::DEFAULT_SONG_DURATION_MS)
                         });
 
-                        tokio::time::sleep(Duration::from_secs(period_ms.clone())).await;
+                        tokio::time::sleep(Duration::from_millis(period_ms.clone())).await;
 
                         {
-                            let mut current_song = self.current_song.lock().await;
-                            (*current_song).song = super::Song{
-                                name: Some(self.config.custom_name.clone().unwrap_or_else(|| {
-                                    song.name.clone().unwrap_or(String::from(Self::DEFAULT_SONG_NAME))
-                                }
-                                )),
-                                artist: Some(self.config.custom_artist.clone().unwrap_or_else(|| {
-                                    song.artist.clone().unwrap_or(String::from(Self::DEFAULT_SONG_ARTIST))
-                                }
-                                )),
-                                duration_ms: Some(period_ms),
-                                user_data: song.user_data.clone(),
+                            let song_update = CurrentSong{
+                                    song: super::Song{
+                                    name: Some(self.config.custom_name.clone().unwrap_or_else(|| {
+                                        song.name.clone().unwrap_or(String::from(Self::DEFAULT_SONG_NAME))
+                                    }
+                                    )),
+                                    artist: Some(self.config.custom_artist.clone().unwrap_or_else(|| {
+                                        song.artist.clone().unwrap_or(String::from(Self::DEFAULT_SONG_ARTIST))
+                                    }
+                                    )),
+                                    duration_ms: Some(period_ms),
+                                    user_data: song.user_data.clone(),
+                                },
+                                id: id.clone()
                             };
-                            (*current_song).id = id.clone();
+
+                            self.current_song_channel.send(song_update).ok(); // don't care if there are any listeners
+
+                            //song.print_preview("Replaying: ");
                         }
                     }
                 }
@@ -177,13 +202,9 @@ use crate::Song;
             }
 
             Ok(())
-            })
         }
     }
 }
-
-    // #todo replace with own scheduling system on a separate thread
-    // make config based
 
 /* #[cfg(test)]
 mod tests {
