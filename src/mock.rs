@@ -19,13 +19,12 @@ pub struct Player{
 
 impl Player {
     pub fn new(config: Config) -> Player{
-        let player = Player {
-                player: Arc::new(Impl::new(config))
-            };
-        player
+        Player {
+            player: Arc::new(Impl::new(config))
+        }
     }
 
-    pub fn start(&mut self){
+    pub fn start(&self){
         let player = self.player.clone();
         tokio::spawn(async move { player.run().await });
         println!("Started mock player player");
@@ -65,11 +64,10 @@ impl Impl {
             id: String::from(Self::DEFAULT_SONG_ID)
         });
 
-        let player = Impl {
+        Impl {
             current_song_channel: tx,
-            config: config,
-        };
-        player
+            config
+        }
     }
 
     async fn get_song(&self) -> (super::Song, String) {
@@ -108,7 +106,7 @@ impl Impl {
                             id: id.clone()
                         };
 
-                        self.current_song_channel.send_replace(song_update); // don't care if there are any listeners
+                        self.current_song_channel.send_replace(song_update); 
                         //song.print_preview("Replaying: ");
                     }
                 }

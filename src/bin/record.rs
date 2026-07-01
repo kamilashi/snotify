@@ -28,7 +28,6 @@ async fn main()  {
         Current arg length: {:?}", args
     );
 
-    song.user_data = Vec::new();
     for key_value in args[2..].chunks(2) {
         let data = UserData {
             key: key_value[0].clone(),
@@ -39,15 +38,10 @@ async fn main()  {
 
     // argument 0 is the binary path, so we skip it
     let path = snotify::make_playlist_path(&args[1]);
-    let mut songs = match snotify::load_playlist(&path) {
-        Some(table) => {
-            if table.contains_key(&id) {
-                let song = table.get(&id).expect("should exist");
-                song.print_preview("Overwriting data for song:");
-            }
-        table},
-        None => HashMap::new()
-    };
+    let mut songs = snotify::load_playlist(&path).unwrap_or_default();
+    if let Some(existing) = songs.get(&id) {
+        existing.print_preview("Overwriting data for song:");
+    }
 
     songs.insert(id, song);
 

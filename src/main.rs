@@ -1,5 +1,3 @@
-
-use tokio;
 use rspotify::clients::OAuthClient;
 use std::env;
 use std::time::Duration;
@@ -41,12 +39,9 @@ async fn main()   {
                 if !current_id.eq(&id) {        
                     current_id = id;
 
-                    if songs.contains_key(&current_id) {
-                        let song = songs.get(&current_id).expect("should exist");
-                        song.print_preview("Currently playing:");
-                    }
-                    else {
-                        song.print_preview("Could not find database entry for song:");
+                    match songs.get(&current_id) {
+                        Some(song) => song.print_preview("Currently playing:"),
+                        None => song.print_preview("Could not find database entry for song:"),
                     }
                 }
 
