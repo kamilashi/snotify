@@ -3,7 +3,7 @@ use std::env;
 use std::time::Duration;
 use rspotify::ClientError;
 
-const MAX_CLIENT_ERROR_COUNT: usize = 5_usize;
+const MAX_CLIENT_ERROR_COUNT: usize = 5;
 
 #[tokio::main]
 async fn main()   {
