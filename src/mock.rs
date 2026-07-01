@@ -13,26 +13,26 @@ struct CurrentSong{
     id: String
 }
 
-pub struct Engine{
-    engine : Arc<Impl>
+pub struct Player{
+    player : Arc<Impl>
 }
 
-impl Engine {
-    pub fn new(config: Config) -> Engine{
-        let engine = Engine {
-                engine: Arc::new(Impl::new(config))
+impl Player {
+    pub fn new(config: Config) -> Player{
+        let player = Player {
+                player: Arc::new(Impl::new(config))
             };
-        engine
+        player
     }
 
     pub fn start(&mut self){
-        let engine = self.engine.clone();
-        tokio::spawn(async move { engine.run().await });
-        println!("Started mock player engine");
+        let player = self.player.clone();
+        tokio::spawn(async move { player.run().await });
+        println!("Started mock player player");
     } 
 
-    pub async fn current_playing(&self) -> Option<(super::Song, String)> {
-        Some(self.engine.get_song().await)
+    pub async fn get_currently_playing(&self) -> (super::Song, String) {
+        self.player.get_song().await
     }
 }
 
@@ -65,11 +65,11 @@ impl Impl {
             id: String::from(Self::DEFAULT_SONG_ID)
         });
 
-        let engine = Impl {
+        let player = Impl {
             current_song_channel: tx,
             config: config,
         };
-        engine
+        player
     }
 
     async fn get_song(&self) -> (super::Song, String) {
