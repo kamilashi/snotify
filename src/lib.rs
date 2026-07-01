@@ -175,7 +175,7 @@ pub mod mock {
 
                         {
                             let song_update = CurrentSong{
-                                    song: super::Song{
+                                song: super::Song{
                                     name: Some(self.config.custom_name.clone().unwrap_or_else(|| {
                                         song.name.clone().unwrap_or(String::from(Self::DEFAULT_SONG_NAME))
                                     }
@@ -190,8 +190,7 @@ pub mod mock {
                                 id: id.clone()
                             };
 
-                            self.current_song_channel.send(song_update).ok(); // don't care if there are any listeners
-
+                            self.current_song_channel.send_replace(song_update); // don't care if there are any listeners
                             //song.print_preview("Replaying: ");
                         }
                     }
