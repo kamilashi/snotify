@@ -23,9 +23,9 @@ async fn main()   {
     assert!(std::path::Path::new(&path).exists(), "Database for playlist {} doesn't exist", &args[1]);
 
     let songs = snotify::load_playlist(&path).expect("Could not load song database");
-    let spotify = snotify::authorize().await;
     let mut current_id = String::from("");
 
+    let spotify = snotify::authorize().await;
     let mut consecutive_client_error_count = 0_usize;
 
     loop {
