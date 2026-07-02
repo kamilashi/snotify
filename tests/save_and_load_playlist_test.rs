@@ -22,7 +22,7 @@ fn save_and_load_playlist_test() {
 
     snotify::save_playlist(&path, &songs);
     
-    let songs_desered = snotify::load_playlist(&path).unwrap();
+    let songs_desered = snotify::load_playlist(path.clone()).unwrap();
     
     assert_eq!(songs, songs_desered);
 
