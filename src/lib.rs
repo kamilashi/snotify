@@ -1,10 +1,85 @@
-use std::collections::HashMap;
+use std::{collections::HashMap, fmt};
 
 // once there are proper runners this should disintegrate
 pub use rspotify::{AuthCodeSpotify, Credentials, OAuth, model::{CurrentlyPlayingType::Unknown, PlayableItem, track}, prelude::*, scopes};
 use serde::{Serialize, Deserialize};
 
 pub const DATA_PATH: &str = "data/";
+
+#[derive(Debug)]
+pub struct ErrorWithRetryAfter{
+   pub error: Box<dyn std::error::Error>,
+   pub retry_after_s: u64
+}
+
+#[derive(Debug)]
+pub struct RetryAfter{
+   pub s: u64
+}
+
+#[derive(Debug)]
+pub enum SnotifyError {
+    ClientError(ErrorWithRetryAfter),
+    UnsupportedItemType((PlayableItem, RetryAfter)),
+    NoPlayableItem(RetryAfter),
+    MissingStringId((Song, RetryAfter)),
+    NoCurrentlyPlayingContext,
+    Unknown,
+}
+
+impl fmt::Display for SnotifyError {
+    fn fmt(&self, f: &mut fmt::Formatter) -> fmt::Result {
+        match self {
+            Self::ClientError(error_with_retry) => {
+                write!(f, "Client error: \n {}", error_with_retry.error)?;
+                write!(f, "Retry after {} seconds", error_with_retry.retry_after_s)
+            },
+            Self::UnsupportedItemType((item, retry_after)) => {
+                write!(f, "The handling of playable item {:#?} is not implemented.", item)?;
+                write!(f, "Retry after {} seconds", retry_after.s)
+            },
+            Self::NoPlayableItem(retry_after_s) => {
+                write!(f, "Failed to fetch playable item.")?;
+                write!(f, "Retry after {} seconds",retry_after_s.s)
+            },
+            Self::MissingStringId((song, retry_after_s)) => {
+                write!(f, "Missing id on song {} ", song)?;
+                write!(f, "Retry after {} seconds", retry_after_s.s)
+            },
+            Self::NoCurrentlyPlayingContext => {
+                write!(f, "Failed to fetch currently playing context.")
+            },
+            Self::Unknown => {
+                write!(f, "Encountered an unknown error.")
+            }
+        }
+    }
+}
+
+impl SnotifyError {
+    pub fn retry_after_s(&self) -> Option<u64> {
+        match self {
+            Self::ClientError(error_with_retry) => {
+                Some(error_with_retry.retry_after_s)
+            },
+            Self::UnsupportedItemType((_, retry_after_s)) => {
+                Some(retry_after_s.s)
+            },
+            Self::NoPlayableItem(retry_after_s) => {
+                Some(retry_after_s.s)
+            },
+            Self::MissingStringId((_, retry_after_s)) => {
+                Some(retry_after_s.s)
+            },
+            Self::NoCurrentlyPlayingContext => {
+                None
+            },
+            Self::Unknown => {
+                None
+            }
+        }
+    } 
+}
 
 #[derive(Serialize, Deserialize, Debug, PartialEq, Clone)]
 pub struct UserData {
@@ -32,34 +107,16 @@ impl Song {
     }
 }
 
-pub async fn authorize() -> AuthCodeSpotify {
-    let creds = Credentials::from_env().unwrap();
-    let oauth = OAuth::from_env(scopes!("user-read-currently-playing")).unwrap();
-    let spotify = AuthCodeSpotify::new(creds, oauth);
+impl fmt::Display for Song {
+    fn fmt(&self, f: &mut fmt::Formatter) -> fmt::Result {
+        write!(f, "  name: {}", self.name.as_deref().unwrap_or("unknown"))?;
+        write!(f, "  artist: {}",self.artist.as_deref().unwrap_or("unknown"))?;
 
-    let url = spotify.get_authorize_url(false).unwrap();
-    spotify.prompt_for_token(&url).await.unwrap();
-
-    spotify
-}
-
-pub fn get_song(item: PlayableItem) -> Option<(Song, String)>{
-     match item {
-        PlayableItem::Unknown(object) => {
-            let id: String = object["id"].as_str()?.to_string();
-
-            let song = Song {
-                name: object["name"].as_str().map(String::from),
-                artist: object["artists"][0]["name"].as_str().map(String::from),
-                duration_ms: object["duration_ms"].as_u64(),
-                user_data: Vec::new()
-            };
-            Some((song, id))
+        for key_value in &self.user_data {
+            write!(f, " {} : {}", key_value.key, key_value.value)?;
         }
-        unhandled => {
-            println!("Unimplemented playback item type {:#?}", unhandled);
-            None
-        }
+
+        Ok(())
     }
 }
 
@@ -81,8 +138,5 @@ pub fn make_playlist_path(name: &str) -> String{
 }
 
 pub mod mock;
+pub mod spotify;
 
-/* #[cfg(test)]
-mod tests {
-    use super::*;
-} */

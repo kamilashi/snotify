@@ -1,7 +1,5 @@
 use snotify::UserData;
 use tokio;
-use rspotify::clients::OAuthClient;
-use std::collections::HashMap;
 use std::env;
 
 #[tokio::main]
@@ -9,14 +7,8 @@ async fn main()  {
     env_logger::init();
     std::fs::create_dir_all(snotify::DATA_PATH).unwrap();
     
-    let spotify = snotify::authorize().await;
-    let track = spotify.current_playing(None, None::<Vec<_>>).await.unwrap();
-
-    dbg!(&track);
-
-    let context = track.expect("Could not get context");
-    let item = context.item.expect("Could not get item from the context");
-    let (mut song, id) = snotify::get_song(item).expect("Could not retrieve song data");
+    let spotify_player = snotify::spotify::Player::new().await;
+    let (mut song, id) = spotify_player.get_currently_playing().await.expect("Could not fetch the current song");
 
     song.print_preview("Currently playing - ");
 

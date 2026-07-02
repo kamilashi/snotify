@@ -25,7 +25,7 @@ async fn main()   {
         custom_period_ms: Some(5000),
     };
 
-    let mut player = snotify::mock::Player::new(config);
+    let player = snotify::mock::Player::new(config);
     player.start();
 
     let mut current_id = String::from("");
