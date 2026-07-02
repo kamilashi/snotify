@@ -1,4 +1,4 @@
-use std::env;
+use std::{env, process};
 use std::time::Duration;
 
 #[tokio::main]
@@ -14,9 +14,11 @@ async fn main()   {
 
     let path = snotify::make_playlist_path(&args[1]);
     let mock_playlist_path = snotify::make_playlist_path("test");
-    assert!(std::path::Path::new(&path).exists(), "Database for playlist {} doesn't exist", &args[1]);
 
-    let songs = snotify::load_playlist(&path).expect("Could not load song database");
+    let mut engine = snotify::Engine::new(path).unwrap_or_else(|error| {
+        eprintln!("Error: {}", error);
+        process::exit(1);
+    });
 
     let config= snotify::mock::Config {
         playlist_path: Some(mock_playlist_path),
@@ -28,18 +30,15 @@ async fn main()   {
     let player = snotify::mock::Player::new(config);
     player.start();
 
-    let mut current_id = String::from("");
-
     loop {
-        let (song, id) = player.get_currently_playing().await;
-        if !current_id.eq(&id) {        
-            current_id = id;
+        let (song, id) = player.get_currently_playing();
 
-            match songs.get(&current_id) {
+        if engine.try_update(id) {
+            match engine.get_song_data() {
                 Some(song) => song.print_preview("Currently playing:"),
                 None => song.print_preview("Could not find database entry for song:"),
             }
-        }
+        } 
 
         let sleep_for_ms = 3000_u64;
         tokio::time::sleep(Duration::from_millis(sleep_for_ms)).await;

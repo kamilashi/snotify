@@ -1,4 +1,4 @@
-use snotify::SnotifyError;
+use snotify::error_handling::{*};
 use std::{env, process};
 use std::time::Duration;
 
@@ -18,10 +18,11 @@ async fn main()   {
     );
 
     let path = snotify::make_playlist_path(&args[1]);
-    assert!(std::path::Path::new(&path).exists(), "Database for playlist {} doesn't exist", &args[1]);
 
-    let songs = snotify::load_playlist(&path).expect("Could not load song database");
-    let mut current_id = String::from("");
+    let mut engine = snotify::Engine::new(path).unwrap_or_else(|error| {
+        eprintln!("Error: {}", error);
+        process::exit(1);
+    });
 
     let spotify_player = snotify::spotify::Player::new().await;
     let mut consecutive_client_error_count = 0_usize;
@@ -31,14 +32,12 @@ async fn main()   {
             Ok((song, id)) => {
                 consecutive_client_error_count = 0;
 
-                if !current_id.eq(&id) {        
-                    current_id = id;
-
-                    match songs.get(&current_id) {
+                if engine.try_update(id) {
+                    match engine.get_song_data() {
                         Some(song) => song.print_preview("Currently playing:"),
                         None => song.print_preview("Could not find database entry for song:"),
                     }
-                }
+                } 
 
                 tokio::time::sleep(Duration::from_millis(DEFAULT_SPOTIFY_REQUEST_PERIOD)).await;
             },

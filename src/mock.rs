@@ -1,4 +1,4 @@
-use std::{error::Error, sync::Arc, time::Duration};
+use std::{sync::Arc, time::Duration};
 use tokio::sync::watch;
 use super::{*};
 
@@ -25,14 +25,19 @@ impl Player {
         }
     }
 
-    pub fn start(&self){
+    pub fn start(&self) -> tokio::task::JoinHandle<Result<(), SnotifyError>>{
         let player_impl = self.player_impl.clone();
-        tokio::spawn(async move { player_impl.run().await });
+        // #todo: get the spawner from client code
+        let handle = tokio::spawn(async move {
+            player_impl.run().await
+        });
+        // #todo: Debug
         println!("Started mock player player");
+        handle
     } 
 
-    pub async fn get_currently_playing(&self) -> (Song, String) {
-        self.player_impl.get_song().await
+    pub fn get_currently_playing(&self) -> (Song, String) {
+        self.player_impl.get_song()
     }
 }
 
@@ -71,15 +76,15 @@ impl Impl {
         }
     }
 
-    async fn get_song(&self) -> (Song, String) {
+    fn get_song(&self) -> (Song, String) {
         let current = self.current_song_channel.borrow();
         (current.song.clone(), current.id.clone())
     }
 
-    async fn run(&self) -> Result<(), Box<dyn Error + Send + Sync>>{
+    async fn run(&self) -> Result<(), SnotifyError> {
         if let Some(path) = &self.config.playlist_path {
             println!("Loading mock playlist {}", path);
-            let playlist = load_playlist(path).expect("Could not load mock playlist.");
+            let playlist = load_playlist(path.to_string())?;
 
             // simulate looping playlist
             loop{
@@ -87,8 +92,6 @@ impl Impl {
                     let period_ms = self.config.custom_period_ms.unwrap_or_else(|| {
                         song.duration_ms.unwrap_or(Self::DEFAULT_SONG_DURATION_MS)
                     });
-
-                    tokio::time::sleep(Duration::from_millis(period_ms.clone())).await;
 
                     {
                         let song_update = CurrentSong{
@@ -101,22 +104,24 @@ impl Impl {
                                     song.artist.clone().unwrap_or(String::from(Self::DEFAULT_SONG_ARTIST))
                                 }
                                 )),
-                                duration_ms: Some(period_ms),
+                                duration_ms: Some(period_ms.clone()),
                                 user_data: song.user_data.clone(),
                             },
                             id: id.clone()
                         };
 
                         self.current_song_channel.send_replace(song_update); 
-                        //song.print_preview("Replaying: ");
+
+                        // #todo: get the sleeper from client code
+                        tokio::time::sleep(Duration::from_millis(period_ms.clone())).await;
                     }
                 }
             }
         }
         else{
-            eprintln!("Cannot use run function without an actual playlist to run");
+            // #todo: implement Generic(String/Box Error)
+            eprintln!("Error: Cannot use run function without an actual playlist to run");
+            Err(SnotifyError::Unknown)
         }
-
-        Ok(())
     }
 }
