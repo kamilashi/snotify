@@ -9,6 +9,8 @@ pub mod error_handling;
 pub mod mock;
 pub mod spotify;
 
+type Playlist = HashMap<String, Song>;
+
 pub const DATA_PATH: &str = "data/";
 
 #[derive(Serialize, Deserialize, Debug, PartialEq, Clone)]
@@ -22,7 +24,7 @@ pub struct Song {
     pub name: Option<String>,
     pub artist: Option<String>,
     pub duration_ms: Option<u64>,
-    pub user_data: Vec<UserData>,
+    pub user_data: Vec<UserData>, // #todo: use Option
 }
 
 // #todo get rid of
@@ -51,17 +53,17 @@ impl fmt::Display for Song {
     }
 }
 
-pub fn load_playlist(path: String) -> Result<HashMap<String, Song>, SnotifyError> {
+pub fn load_playlist(path: String) -> Result<Playlist, SnotifyError> {
     if !std::path::Path::new(&path).exists() {
         return Err(SnotifyError::PathNotExistent(path))?;
     }
 
     let file = std::fs::read_to_string(path).map_err(|_| SnotifyError::FailedToReadFile)?;
-    let map: HashMap<String, Song> = serde_json::from_str(&file).map_err(|_| SnotifyError::FailedDeserializeFromJson)?;
+    let map: Playlist = serde_json::from_str(&file).map_err(|_| SnotifyError::FailedDeserializeFromJson)?;
     Ok(map)
 }
 
-pub fn save_playlist(path: &str, songs: &HashMap<String, Song>){
+pub fn save_playlist(path: &str, songs: &Playlist){
     std::fs::write(
         path,
         serde_json::to_string_pretty(songs).expect("Could not serialize to .json")
@@ -71,9 +73,8 @@ pub fn save_playlist(path: &str, songs: &HashMap<String, Song>){
 pub fn make_playlist_path(name: &str) -> String{
     format!("{}{}.json", DATA_PATH, name)
 }
-
 pub struct Engine {
-    playlist_database: HashMap<String, Song>,
+    playlist_database: Playlist,
     current_id: String
 } 
 
