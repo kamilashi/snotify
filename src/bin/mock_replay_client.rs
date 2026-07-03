@@ -1,5 +1,5 @@
 use snotify::{deserialize_json, mock::ipc};
-use std::{clone, env, process};
+use std::{env, process};
 
 fn main() {
     env_logger::init();
@@ -19,19 +19,23 @@ fn main() {
         process::exit(1);
     });
 
-    let mut client = ipc::Client::new();
+    let mut client = snotify::mock::ipc::Client::new();
     let server = client.get_server();
-    let request = format!("GET / HTTP/1.1 \n Host: {} \r\n\r\n", ipc::IP_AND_PORT);
+    let request = format!(
+        "GET / HTTP/1.1 \n Host: {} \r\n\r\n",
+        snotify::mock::ipc::IP_AND_PORT
+    );
 
     loop {
         ipc::write(server, &request).unwrap();
 
-        let (all_lines, content_idx) = ipc::read(server);
+        let (all_lines, content_idx) = snotify::mock::ipc::read(server);
 
         if let Some(content_start) = content_idx {
-            let current_song =
-                deserialize_json::<ipc::CurrentSong>(&all_lines[content_start..].join("\n"))
-                    .unwrap();
+            let current_song = deserialize_json::<snotify::mock::ipc::CurrentSong>(
+                &all_lines[content_start..].join("\n"),
+            )
+            .unwrap();
 
             if engine.try_update(current_song.id) {
                 match engine.get_song_data() {
