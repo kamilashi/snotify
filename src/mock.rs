@@ -2,16 +2,21 @@ use std::{sync::Arc, time::Duration};
 use tokio::sync::watch;
 use super::{*};
 
+pub mod ipc;
+
 pub struct Config{
     pub playlist_path: Option<String>,
     pub custom_name: Option<String>,
     pub custom_artist: Option<String>,
     pub custom_period_ms: Option<u64>,
+    pub debug_print: bool,
 }
 
+// #todo: replace with alias to a tuple
+// type CurrentSong = (Song, String);
 struct CurrentSong{
-    song: Song,
-    id: String
+     song: Song,
+     id: String
 }
 
 pub struct Player{
@@ -25,7 +30,7 @@ impl Player {
         }
     }
 
-    pub fn start(&self) -> tokio::task::JoinHandle<Result<(), SnotifyError>>{
+    pub fn start_async(&self) -> tokio::task::JoinHandle<Result<(), SnotifyError>>{
         let player_impl = self.player_impl.clone();
         // #todo: get the spawner from client code
         let handle = tokio::spawn(async move {
@@ -84,7 +89,7 @@ impl Impl {
     async fn run(&self) -> Result<(), SnotifyError> {
         if let Some(path) = &self.config.playlist_path {
             println!("Loading mock playlist {}", path);
-            let playlist = load_playlist(path.to_string())?;
+            let playlist = load_playlist(path)?;
 
             // simulate looping playlist
             loop{
@@ -92,6 +97,10 @@ impl Impl {
                     let period_ms = self.config.custom_period_ms.unwrap_or_else(|| {
                         song.duration_ms.unwrap_or(Self::DEFAULT_SONG_DURATION_MS)
                     });
+
+                    if self.config.debug_print {
+                        song.print_preview("Playing: ");
+                    }
 
                     {
                         let song_update = CurrentSong{

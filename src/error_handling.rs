@@ -2,9 +2,11 @@
 
 use super::{*};
 
+type Error = Box<dyn std::error::Error + Send + Sync>;
+
 #[derive(Debug)]
 pub struct ErrorWithRetryAfter{
-   pub error: Box<dyn std::error::Error + Send + Sync>,
+   pub error: Error,
    pub retry_after_s: u64
 }
 
@@ -23,7 +25,7 @@ pub enum SnotifyError {
     PathNotExistent(String),
     FailedSerializeToJson,
     FailedDeserializeFromJson,
-    FailedToReadFile,
+    FileIOFailure(Error),
     Unknown,
 }
 
@@ -59,8 +61,8 @@ impl fmt::Display for SnotifyError {
             Self::FailedDeserializeFromJson => {
                 write!(f, "Failed to deserialize from json.")
             },
-            Self::FailedToReadFile => {
-                write!(f, "Failed to read file.")
+            Self::FileIOFailure(error) => {
+                write!(f, "File IO error: {error}")
             },
             Self::Unknown => {
                 write!(f, "Encountered an unknown error.")

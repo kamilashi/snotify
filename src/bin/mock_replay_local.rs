@@ -25,10 +25,11 @@ async fn main()   {
         custom_artist: None,
         custom_name: None,
         custom_period_ms: Some(5000),
+        debug_print: false,
     };
 
     let player = snotify::mock::Player::new(config);
-    player.start();
+    player.start_async();
 
     loop {
         let (song, id) = player.get_currently_playing();

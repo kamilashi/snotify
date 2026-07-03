@@ -53,21 +53,30 @@ impl fmt::Display for Song {
     }
 }
 
-pub fn load_playlist(path: String) -> Result<Playlist, SnotifyError> {
-    if !std::path::Path::new(&path).exists() {
-        return Err(SnotifyError::PathNotExistent(path))?;
-    }
-
-    let file = std::fs::read_to_string(path).map_err(|_| SnotifyError::FailedToReadFile)?;
-    let map: Playlist = serde_json::from_str(&file).map_err(|_| SnotifyError::FailedDeserializeFromJson)?;
-    Ok(map)
+pub fn serialize_json(item: &impl Serialize) -> Result<String, SnotifyError>{
+    serde_json::to_string_pretty(item).map_err(|_| SnotifyError::FailedSerializeToJson)
 }
 
-pub fn save_playlist(path: &str, songs: &Playlist){
+pub fn deserialize_json<'a, T : Deserialize<'a>>(json: &'a str) -> Result<T, SnotifyError>{
+    serde_json::from_str(&json).map_err(|_| SnotifyError::FailedDeserializeFromJson)
+}
+
+pub fn save_playlist(path: &str, songs: &Playlist) -> Result<(), SnotifyError>{
     std::fs::write(
         path,
-        serde_json::to_string_pretty(songs).expect("Could not serialize to .json")
-    ).expect("Could not write to file");
+        serialize_json(songs)?
+    ).map_err(|error| SnotifyError::FileIOFailure(Box::new(error)))?;
+    Ok(())
+}
+
+pub fn load_playlist(path: &str) -> Result<Playlist, SnotifyError> {
+    if !std::path::Path::new(&path).exists() {
+        return Err(SnotifyError::PathNotExistent(String::from(path)))?;
+    }
+
+    let file = std::fs::read_to_string(path).map_err(|error| SnotifyError::FileIOFailure(Box::new(error)))?;
+    let map: Playlist = deserialize_json(&file)?;
+    Ok(map)
 }
 
 pub fn make_playlist_path(name: &str) -> String{
@@ -80,7 +89,7 @@ pub struct Engine {
 
 impl Engine {
     pub fn new(path: String) -> Result<Self, SnotifyError> {
-        let songs = load_playlist(path)?;
+        let songs = load_playlist(&path)?;
 
         Ok(Engine{
             playlist_database: songs,

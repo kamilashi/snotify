@@ -1,3 +1,4 @@
+use serde_json::error;
 use snotify;
 use std::collections::HashMap;
  
@@ -20,9 +21,9 @@ fn save_and_load_playlist_test() {
     let playlist_name = "test_playlist";
     let path = snotify::make_playlist_path(playlist_name);
 
-    snotify::save_playlist(&path, &songs);
+    snotify::save_playlist(&path, &songs).map_err(|err| {eprintln!("Could not save playlist! Error: {}", err);});
     
-    let songs_desered = snotify::load_playlist(path.clone()).unwrap();
+    let songs_desered = snotify::load_playlist(&path).unwrap();
     
     assert_eq!(songs, songs_desered);
 
