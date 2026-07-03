@@ -3,28 +3,6 @@ use snotify::mock::ipc;
 use std::{net::TcpStream, sync::Arc};
 use tokio::task::JoinSet;
 
-const MAX_CLIENT_COUNT: usize = 20;
-
-async fn serve_client(mut stream: TcpStream, player: Arc<snotify::mock::ArcPlayer>) {
-    loop {
-        let request = ipc::read(&stream);
-        println!("Request: {request:#?}");
-
-        let (song, id) = player.get_currently_playing();
-        let current_song = snotify::mock::ipc::CurrentSong { song, id };
-
-        let message = snotify::mock::ipc::serialize_html_responcel(
-            "200",
-            "OK",
-            snotify::serialize_json(&current_song)
-                .map_err(|err| eprintln!("Error: {err}"))
-                .expect("Could not serialize"),
-        );
-
-        ipc::write(&mut stream, &message).unwrap();
-    }
-}
-
 #[tokio::main]
 async fn main() {
     env_logger::init();
@@ -50,11 +28,14 @@ async fn main() {
     for stream in server.get_clients() {
         let stream = stream.unwrap();
 
-        tasks.spawn(serve_client(stream, player.clone_async()));
+        tasks.spawn(snotify::mock::ipc::serve_client(
+            stream,
+            player.clone_async(),
+        ));
 
         served_client_count += 1;
 
-        if served_client_count == MAX_CLIENT_COUNT {
+        if served_client_count == snotify::mock::ipc::MAX_CLIENT_COUNT {
             println!("Max client number reached: {served_client_count}");
             break;
         }

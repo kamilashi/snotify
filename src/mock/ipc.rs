@@ -1,4 +1,5 @@
 pub const IP_AND_PORT: &str = "127.0.0.1:7878";
+pub const MAX_CLIENT_COUNT: usize = 1;
 
 // #todo: make runtime agnostic
 use std::{
@@ -91,4 +92,24 @@ pub fn read(stream: &TcpStream) -> (Vec<String>, Option<usize>) {
 
 pub fn write(stream: &mut TcpStream, msg: &str) -> Result<(), std::io::Error> {
     stream.write_all(format!("{msg}\r\n\r\n").as_bytes())
+}
+
+pub async fn serve_client(mut stream: TcpStream, player: Arc<ArcPlayer>) {
+    loop {
+        let request = ipc::read(&stream);
+        println!("Request: {request:#?}");
+
+        let (song, id) = player.get_currently_playing();
+        let current_song = CurrentSong { song, id };
+
+        let message = serialize_html_responcel(
+            "200",
+            "OK",
+            serialize_json(&current_song)
+                .map_err(|err| eprintln!("Error: {err}"))
+                .expect("Could not serialize"),
+        );
+
+        ipc::write(&mut stream, &message).unwrap();
+    }
 }
