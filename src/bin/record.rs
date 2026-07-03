@@ -1,14 +1,17 @@
 use snotify::UserData;
-use tokio;
 use std::env;
+use tokio;
 
 #[tokio::main]
-async fn main()  {
+async fn main() {
     env_logger::init();
     std::fs::create_dir_all(snotify::DATA_PATH).unwrap();
-    
+
     let spotify_player = snotify::spotify::Player::new().await;
-    let (mut song, id) = spotify_player.get_currently_playing().await.expect("Could not fetch the current song");
+    let (mut song, id) = spotify_player
+        .get_currently_playing()
+        .await
+        .expect("Could not fetch the current song");
 
     song.print_preview("Currently playing - ");
 
@@ -17,7 +20,8 @@ async fn main()  {
         args.len() >= 4 && args.len() % 2 == 0,
         "Please provide a playlist name and an even \
         number of subsequent arguments: key1 value1 key2 value2 ... . \n \
-        Current arg length: {:?}", args
+        Current arg length: {:?}",
+        args
     );
 
     for key_value in args[2..].chunks(2) {
@@ -37,5 +41,7 @@ async fn main()  {
 
     songs.insert(id, song);
 
-    snotify::save_playlist(&path, &songs).map_err(|err| {eprintln!("Could not save playlist! Error: {}", err);});;
+    snotify::save_playlist(&path, &songs).map_err(|err| {
+        eprintln!("Could not save playlist! Error: {}", err);
+    });
 }

@@ -25,13 +25,13 @@ impl Player {
         }
     }
 
-    pub fn start_async(&self) -> tokio::task::JoinHandle<Result<(), SnotifyError>> {
+    pub fn start_async(&self) -> Result<(), SnotifyError> {
         let player_impl = self.player_impl.clone();
         // #todo: get the spawner from client code
-        let handle = tokio::spawn(async move { player_impl.run().await });
+        tokio::spawn(async move { player_impl.run().await });
         // #todo: Debug
         println!("Started mock player player");
-        handle
+        Ok(())
     }
 
     pub fn get_currently_playing(&self) -> CurrentSong {

@@ -1,15 +1,17 @@
-use std::{env, process};
+use snotify;
 use std::time::Duration;
+use std::{env, process};
 
 #[tokio::main]
-async fn main()   {
+async fn main() {
     env_logger::init();
 
     let args: Vec<String> = env::args().collect();
     assert!(
         args.len() == 2,
         "Please provide a playlist name \
-        Current arg length: {:?}", args
+        Current arg length: {:?}",
+        args
     );
 
     let path = snotify::make_playlist_path(&args[1]);
@@ -20,7 +22,7 @@ async fn main()   {
         process::exit(1);
     });
 
-    let config= snotify::mock::Config {
+    let config = snotify::mock::Config {
         playlist_path: Some(mock_playlist_path),
         custom_artist: None,
         custom_name: None,
@@ -39,7 +41,7 @@ async fn main()   {
                 Some(song) => song.print_preview("Currently playing:"),
                 None => song.print_preview("Could not find database entry for song:"),
             }
-        } 
+        }
 
         let sleep_for_ms = 3000_u64;
         tokio::time::sleep(Duration::from_millis(sleep_for_ms)).await;

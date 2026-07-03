@@ -1,7 +1,8 @@
-use snotify::{deserialize_json, mock::ipc};
+use snotify;
 use std::{env, process};
 
-fn main() {
+#[tokio::main]
+async fn main() {
     env_logger::init();
 
     let args: Vec<String> = env::args().collect();
@@ -19,7 +20,7 @@ fn main() {
         process::exit(1);
     });
 
-    let mut client = snotify::mock::ipc::Client::new();
+    let mut client = snotify::ipc::Client::new(snotify::mock::ipc::IP_AND_PORT).await;
     let server = client.get_server();
     let request = format!(
         "GET / HTTP/1.1 \n Host: {} \r\n\r\n",
@@ -27,12 +28,12 @@ fn main() {
     );
 
     loop {
-        ipc::write(server, &request).unwrap();
+        snotify::ipc::write(server, &request).await.unwrap();
 
-        let (all_lines, content_idx) = snotify::mock::ipc::read(server);
+        let (all_lines, content_idx) = snotify::ipc::read(server).await.unwrap();
 
         if let Some(content_start) = content_idx {
-            let current_song = deserialize_json::<snotify::mock::ipc::CurrentSong>(
+            let current_song = snotify::deserialize_json::<snotify::mock::ipc::CurrentSong>(
                 &all_lines[content_start..].join("\n"),
             )
             .unwrap();
