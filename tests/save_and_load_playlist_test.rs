@@ -21,9 +21,9 @@ fn save_and_load_playlist_test() {
     let playlist_name = "test_playlist";
     let path = snotify::make_playlist_path(playlist_name);
 
-    snotify::save_playlist(&path, &songs).map_err(|err| {eprintln!("Could not save playlist! Error: {}", err);});
+    snotify::save_playlist(&path, &songs).expect("Could not save playlist");
     
-    let songs_desered = snotify::load_playlist(&path).unwrap();
+    let songs_desered = snotify::load_playlist(&path).expect("Could not load playlist");
     
     assert_eq!(songs, songs_desered);
 

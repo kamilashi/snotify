@@ -1,10 +1,12 @@
+use super::*;
 use std::{sync::Arc, time::Duration};
 use tokio::sync::watch;
-use super::{*};
 
 pub mod ipc;
 
-pub struct Config{
+type CurrentSong = (Song, String);
+
+pub struct Config {
     pub playlist_path: Option<String>,
     pub custom_name: Option<String>,
     pub custom_artist: Option<String>,
@@ -12,78 +14,94 @@ pub struct Config{
     pub debug_print: bool,
 }
 
-// #todo: replace with alias to a tuple
-// type CurrentSong = (Song, String);
-struct CurrentSong{
-     song: Song,
-     id: String
-}
-
-pub struct Player{
-    player_impl : Arc<Impl>
+pub struct Player {
+    player_impl: Arc<ArcPlayer>,
 }
 
 impl Player {
-    pub fn new(config: Config) -> Player{
+    pub fn new(config: Config) -> Player {
         Player {
-            player_impl: Arc::new(Impl::new(config))
+            player_impl: Arc::new(ArcPlayer::new(config)),
         }
     }
 
-    pub fn start_async(&self) -> tokio::task::JoinHandle<Result<(), SnotifyError>>{
+    pub fn start_async(&self) -> tokio::task::JoinHandle<Result<(), SnotifyError>> {
         let player_impl = self.player_impl.clone();
         // #todo: get the spawner from client code
-        let handle = tokio::spawn(async move {
-            player_impl.run().await
-        });
+        let handle = tokio::spawn(async move { player_impl.run().await });
         // #todo: Debug
         println!("Started mock player player");
         handle
-    } 
+    }
 
-    pub fn get_currently_playing(&self) -> (Song, String) {
-        self.player_impl.get_song()
+    pub fn get_currently_playing(&self) -> CurrentSong {
+        self.player_impl.get_currently_playing()
+    }
+
+    pub fn clone_async(&self) -> Arc<ArcPlayer> {
+        self.player_impl.clone()
     }
 }
 
-struct Impl{
-    config : Config,
+pub struct ArcPlayer {
+    config: Config,
     current_song_channel: watch::Sender<CurrentSong>,
 }
 
-impl Impl {
-    const DEFAULT_SONG_DURATION_MS : u64 = 3000;
-    const DEFAULT_SONG_NAME : &str = "mock_name";
-    const DEFAULT_SONG_ARTIST : &str = "mock_artist";
-    const DEFAULT_SONG_ID : &str = "0";
+impl ArcPlayer {
+    const DEFAULT_SONG_DURATION_MS: u64 = 3000;
+    const DEFAULT_SONG_NAME: &str = "mock_name";
+    const DEFAULT_SONG_ARTIST: &str = "mock_artist";
+    const DEFAULT_SONG_ID: &str = "0";
 
     fn genegare_default_song(config: &Config) -> Song {
-        Song{
-            name: Some(config.custom_name.clone().unwrap_or(String::from(Self::DEFAULT_SONG_NAME))),
-            artist: Some(config.custom_artist.clone().unwrap_or(String::from(Self::DEFAULT_SONG_ARTIST))),
-            duration_ms: Some(config.custom_period_ms.clone().unwrap_or(Self::DEFAULT_SONG_DURATION_MS)),
-            user_data: vec![ 
-                UserData{key: "key1".to_string(), value: "value1".to_string()},
-                UserData{key: "key2".to_string(), value: "value2".to_string()},
+        Song {
+            name: Some(
+                config
+                    .custom_name
+                    .clone()
+                    .unwrap_or(String::from(Self::DEFAULT_SONG_NAME)),
+            ),
+            artist: Some(
+                config
+                    .custom_artist
+                    .clone()
+                    .unwrap_or(String::from(Self::DEFAULT_SONG_ARTIST)),
+            ),
+            duration_ms: Some(
+                config
+                    .custom_period_ms
+                    .clone()
+                    .unwrap_or(Self::DEFAULT_SONG_DURATION_MS),
+            ),
+            user_data: vec![
+                UserData {
+                    key: "key1".to_string(),
+                    value: "value1".to_string(),
+                },
+                UserData {
+                    key: "key2".to_string(),
+                    value: "value2".to_string(),
+                },
             ],
         }
     }
 
-    fn new(config: Config) -> Impl {
-        let (tx, _rx) = watch::channel(CurrentSong{
-            song: Self::genegare_default_song(&config),
-            id: String::from(Self::DEFAULT_SONG_ID)
-        });
+    fn new(config: Config) -> ArcPlayer {
+        let (tx, _rx) = watch::channel((
+            Self::genegare_default_song(&config),
+            String::from(Self::DEFAULT_SONG_ID),
+        ));
 
-        Impl {
+        ArcPlayer {
             current_song_channel: tx,
-            config
+            config,
         }
     }
 
-    fn get_song(&self) -> (Song, String) {
+    pub fn get_currently_playing(&self) -> CurrentSong {
         let current = self.current_song_channel.borrow();
-        (current.song.clone(), current.id.clone())
+        (current.0.clone(), current.1.clone())
     }
 
     async fn run(&self) -> Result<(), SnotifyError> {
@@ -92,8 +110,8 @@ impl Impl {
             let playlist = load_playlist(path)?;
 
             // simulate looping playlist
-            loop{
-                for (id, song) in playlist.iter(){
+            loop {
+                for (id, song) in playlist.iter() {
                     let period_ms = self.config.custom_period_ms.unwrap_or_else(|| {
                         song.duration_ms.unwrap_or(Self::DEFAULT_SONG_DURATION_MS)
                     });
@@ -103,31 +121,34 @@ impl Impl {
                     }
 
                     {
-                        let song_update = CurrentSong{
-                            song: Song{
+                        let song_update = (
+                            Song {
                                 name: Some(self.config.custom_name.clone().unwrap_or_else(|| {
-                                    song.name.clone().unwrap_or(String::from(Self::DEFAULT_SONG_NAME))
-                                }
-                                )),
-                                artist: Some(self.config.custom_artist.clone().unwrap_or_else(|| {
-                                    song.artist.clone().unwrap_or(String::from(Self::DEFAULT_SONG_ARTIST))
-                                }
+                                    song.name
+                                        .clone()
+                                        .unwrap_or(String::from(Self::DEFAULT_SONG_NAME))
+                                })),
+                                artist: Some(self.config.custom_artist.clone().unwrap_or_else(
+                                    || {
+                                        song.artist
+                                            .clone()
+                                            .unwrap_or(String::from(Self::DEFAULT_SONG_ARTIST))
+                                    },
                                 )),
                                 duration_ms: Some(period_ms.clone()),
                                 user_data: song.user_data.clone(),
                             },
-                            id: id.clone()
-                        };
+                            id.clone(),
+                        );
 
-                        self.current_song_channel.send_replace(song_update); 
+                        self.current_song_channel.send_replace(song_update);
 
                         // #todo: get the sleeper from client code
                         tokio::time::sleep(Duration::from_millis(period_ms.clone())).await;
                     }
                 }
             }
-        }
-        else{
+        } else {
             // #todo: implement Generic(String/Box Error)
             eprintln!("Error: Cannot use run function without an actual playlist to run");
             Err(SnotifyError::Unknown)

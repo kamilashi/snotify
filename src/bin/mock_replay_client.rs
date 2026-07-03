@@ -1,13 +1,15 @@
-use std::{env, process};
+use snotify::{deserialize_json, mock::ipc};
+use std::{clone, env, process};
 
-fn main()   {
+fn main() {
     env_logger::init();
 
     let args: Vec<String> = env::args().collect();
     assert!(
         args.len() == 2,
         "Please provide a playlist name \
-        Current arg length: {:?}", args
+        Current arg length: {:?}",
+        args
     );
 
     let path = snotify::make_playlist_path(&args[1]);
@@ -17,13 +19,30 @@ fn main()   {
         process::exit(1);
     });
 
-    loop {
+    let mut client = ipc::Client::new();
+    let server = client.get_server();
+    let request = format!("GET / HTTP/1.1 \n Host: {} \r\n\r\n", ipc::IP_AND_PORT);
 
-        if engine.try_update(id) {
-            match engine.get_song_data() {
-                Some(song) => song.print_preview("Currently playing:"),
-                None => song.print_preview("Could not find database entry for song:"),
+    loop {
+        ipc::write(server, &request).unwrap();
+
+        let (all_lines, content_idx) = ipc::read(server);
+
+        if let Some(content_start) = content_idx {
+            let current_song =
+                deserialize_json::<ipc::CurrentSong>(&all_lines[content_start..].join("\n"))
+                    .unwrap();
+
+            if engine.try_update(current_song.id) {
+                match engine.get_song_data() {
+                    Some(song) => song.print_preview("Currently playing:"),
+                    None => current_song
+                        .song
+                        .print_preview("Could not find database entry for song:"),
+                }
             }
-        } 
+
+            std::thread::sleep(std::time::Duration::from_secs(1)); // poll every second
+        }
     }
 }

@@ -1,54 +1,70 @@
-use std::process;
-use std::{
-    io::{BufReader, prelude::*},
-    net::{TcpListener, TcpStream},
-};
+use log::{debug, error, info, warn};
 use snotify::mock::ipc;
+use std::{net::TcpStream, sync::Arc};
+use tokio::task::JoinSet;
 
-fn handle_connection(mut stream: TcpStream) {
-    let buf_reader = BufReader::new(&stream);
-    let http_request: Vec<_> = buf_reader
-        .lines()
-        .map(|result| result.unwrap())
-        .take_while(|line| !line.is_empty())
-        .collect();
+const MAX_CLIENT_COUNT: usize = 20;
 
-    println!("Request: {http_request:#?}");
+async fn serve_client(mut stream: TcpStream, player: Arc<snotify::mock::ArcPlayer>) {
+    loop {
+        let request = ipc::read(&stream);
+        println!("Request: {request:#?}");
+
+        let (song, id) = player.get_currently_playing();
+        let current_song = snotify::mock::ipc::CurrentSong { song, id };
+
+        let message = snotify::mock::ipc::serialize_html_responcel(
+            "200",
+            "OK",
+            snotify::serialize_json(&current_song)
+                .map_err(|err| eprintln!("Error: {err}"))
+                .expect("Could not serialize"),
+        );
+
+        ipc::write(&mut stream, &message).unwrap();
+    }
 }
 
 #[tokio::main]
-async fn main()   {
+async fn main() {
     env_logger::init();
 
-    let listener = TcpListener::bind(ipc::IP_AND_PORT).unwrap();
+    let mut server = ipc::Server::new();
 
     let mock_playlist_path = snotify::make_playlist_path("test");
 
-    let config= snotify::mock::Config {
+    let config = snotify::mock::Config {
         playlist_path: Some(mock_playlist_path),
         custom_artist: None,
         custom_name: None,
-        custom_period_ms: Some(5000),
+        custom_period_ms: Some(7000),
         debug_print: true,
     };
 
     let player = snotify::mock::Player::new(config);
     player.start_async();
 
-    for stream in listener.incoming() {
-        let mut stream = stream.unwrap();
+    let mut served_client_count = 0_usize;
+    let mut tasks = JoinSet::new();
 
-        let buf_reader = BufReader::new(&stream);
-        let http_request: Vec<_> = buf_reader
-            .lines()
-            .map(|result| result.unwrap())
-            .take_while(|line| !line.is_empty())
-            .collect(); 
-        println!("Request: {http_request:#?}");
+    for stream in server.get_clients() {
+        let stream = stream.unwrap();
 
-        let (song, _) = player.get_currently_playing();
-        stream.write_all(snotify::serialize_json(&song).map_err(|err| {
-            eprintln!("Error: {err}")
-        }).unwrap().as_bytes()).unwrap();
+        tasks.spawn(serve_client(stream, player.clone_async()));
+
+        served_client_count += 1;
+
+        if served_client_count == MAX_CLIENT_COUNT {
+            println!("Max client number reached: {served_client_count}");
+            break;
+        }
+
+        // #todo: implement disconnect
+    }
+
+    while let Some(result) = tasks.join_next().await {
+        if let Err(e) = result {
+            error!("Client task panicked: {e}");
+        }
     }
 }
