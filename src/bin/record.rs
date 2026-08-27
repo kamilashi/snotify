@@ -41,7 +41,10 @@ async fn main() {
 
     songs.insert(id, song);
 
-    snotify::save_playlist(&path, &songs).map_err(|err| {
-        eprintln!("Could not save playlist! Error: {}", err);
-    });
+    match snotify::save_playlist(&path, &songs) {
+        Err(err) => {
+            eprintln!("Could not save playlist! Error: {}", err);
+        }
+        Ok(()) => {}
+    };
 }

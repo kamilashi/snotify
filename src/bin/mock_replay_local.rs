@@ -31,7 +31,7 @@ async fn main() {
     };
 
     let player = snotify::mock::Player::new(config);
-    player.start_async();
+    let _ = player.start_async();
 
     loop {
         let (song, id) = player.get_currently_playing();

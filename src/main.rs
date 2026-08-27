@@ -9,7 +9,7 @@ const ADDRESS_AND_PORT: &str = "localhost";
 #[tokio::main]
 async fn main() {
     println!(
-        "cargo run --bin record [playlist name] [key1] [key2] ... to update the playlist database"
+        "cargo run --bin record [playlist name] [key1] [value1] [key2] [value2] ... to update the playlist database"
     );
     env_logger::init();
 

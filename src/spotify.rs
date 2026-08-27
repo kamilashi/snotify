@@ -1,9 +1,9 @@
-use super::{*};
+use super::*;
 use rspotify::clients::OAuthClient;
 
-const DEFAULT_RETRY_AFTER_S : u64 = 30;
-pub struct Player{
-    spotify: AuthCodeSpotify
+const DEFAULT_RETRY_AFTER_S: u64 = 30;
+pub struct Player {
+    spotify: AuthCodeSpotify,
 }
 
 async fn authorize() -> AuthCodeSpotify {
@@ -17,7 +17,7 @@ async fn authorize() -> AuthCodeSpotify {
     spotify
 }
 
-fn get_song_id<T: fmt::Display>(song: Song, id: Option<T>) -> Result<(Song, String), SnotifyError>{
+fn get_song_id<T: fmt::Display>(song: Song, id: Option<T>) -> Result<(Song, String), SnotifyError> {
     match id {
         Some(id) => Ok((song, id.to_string())),
         None => {
@@ -29,14 +29,14 @@ fn get_song_id<T: fmt::Display>(song: Song, id: Option<T>) -> Result<(Song, Stri
     }
 }
 
-fn get_song(item: PlayableItem) -> Result<(Song, String), SnotifyError>{
-     match item {
+fn get_song(item: PlayableItem) -> Result<(Song, String), SnotifyError> {
+    match item {
         PlayableItem::Unknown(object) => {
             let song = Song {
                 name: object["name"].as_str().map(String::from),
                 artist: object["artists"][0]["name"].as_str().map(String::from),
                 duration_ms: object["duration_ms"].as_u64(),
-                user_data: Vec::new()
+                user_data: Vec::new(),
             };
             get_song_id(song, object["id"].as_str())
         }
@@ -45,31 +45,38 @@ fn get_song(item: PlayableItem) -> Result<(Song, String), SnotifyError>{
                 name: Some(track.name),
                 artist: Some(track.artists[0].name.clone()),
                 duration_ms: Some(track.duration.num_milliseconds() as u64),
-                user_data: Vec::new()
+                user_data: Vec::new(),
             };
             get_song_id(song, track.id)
-        },
-        unhandled => {
-            Err(SnotifyError::UnsupportedItemType( (unhandled, RetryAfter { s: DEFAULT_RETRY_AFTER_S })))
         }
+        unhandled => Err(SnotifyError::UnsupportedItemType((
+            unhandled,
+            RetryAfter {
+                s: DEFAULT_RETRY_AFTER_S,
+            },
+        ))),
     }
 }
 
 impl Player {
-    pub async fn new() -> Player{
+    pub async fn new() -> Player {
         Player {
-            spotify: authorize().await
+            spotify: authorize().await,
         }
     }
 
-    pub async fn get_currently_playing(&self) -> Result<(Song, String), SnotifyError>{
+    pub async fn get_currently_playing(&self) -> Result<(Song, String), SnotifyError> {
         println!("DEBUG REQUESTING SPOTIFY");
-         match self.spotify.current_playing(None, None::<Vec<_>>).await {
+        match self.spotify.current_playing(None, None::<Vec<_>>).await {
             Ok(track) => {
                 let context = track.ok_or(SnotifyError::NoCurrentlyPlayingContext)?;
-                let item = context.item.ok_or(SnotifyError::NoPlayableItem(RetryAfter { s: DEFAULT_RETRY_AFTER_S }))?;
+                let item = context
+                    .item
+                    .ok_or(SnotifyError::NoPlayableItem(RetryAfter {
+                        s: DEFAULT_RETRY_AFTER_S,
+                    }))?;
                 get_song(item)
-            },
+            }
             Err(error) => {
                 let mut retry_after_secs: Option<u64> = None;
 
@@ -85,7 +92,7 @@ impl Player {
                     }
                 }
 
-                Err(SnotifyError::ClientError( ErrorWithRetryAfter {
+                Err(SnotifyError::ClientError(ErrorWithRetryAfter {
                     error: Box::new(error),
                     retry_after_s: retry_after_secs.unwrap_or(DEFAULT_RETRY_AFTER_S),
                 }))
