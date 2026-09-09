@@ -15,4 +15,16 @@ export default defineConfig({
       '@': fileURLToPath(new URL('./src', import.meta.url)),
     },
   },
+  build: {
+    outDir: "../static",
+    emptyOutDir: true,
+    sourcemap: true, // remove when project is done
+  },
+  server: {
+    port: 5180,
+    strictPort: true, 
+    proxy: {
+      "/api": "http://localhost:6767",
+    },
+  },
 })
