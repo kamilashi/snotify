@@ -1,47 +1,43 @@
 <script setup lang="ts">
-import HelloWorld from './components/HelloWorld.vue'
-import TheWelcome from './components/TheWelcome.vue'
+import { ref, onMounted } from 'vue'
+
+interface Message {
+  text: string
+  count: number
+}
+
+const message = ref<Message | null>(null)
+const error = ref<string | null>(null)
+
+onMounted(async () => {
+  try {
+    const res = await fetch('/api/hello')
+    if (!res.ok) throw new Error(`HTTP ${res.status}`)
+    message.value = (await res.json()) as Message
+  } catch (e: unknown) {
+    error.value = e instanceof Error ? e.message : 'request failed'
+  }
+})
 </script>
 
 <template>
-  <header>
-    <img alt="Vue logo" class="logo" src="./assets/logo.svg" width="125" height="125" />
-
-    <div class="wrapper">
-      <HelloWorld msg="You did it!" />
-    </div>
-  </header>
-
   <main>
-    <TheWelcome />
+    <p v-if="error" class="error">Error: {{ error }}</p>
+    <p v-else-if="!message">Loading…</p>
+    <template v-else>
+      <h1>{{ message.text }}</h1>
+      <p>Count: {{ message.count }}</p>
+    </template>
   </main>
 </template>
 
 <style scoped>
-header {
-  line-height: 1.5;
+main {
+  font-family: system-ui, sans-serif;
+  padding: 2rem;
+  max-width: 40rem;
 }
-
-.logo {
-  display: block;
-  margin: 0 auto 2rem;
-}
-
-@media (min-width: 1024px) {
-  header {
-    display: flex;
-    place-items: center;
-    padding-right: calc(var(--section-gap) / 2);
-  }
-
-  .logo {
-    margin: 0 2rem 0 0;
-  }
-
-  header .wrapper {
-    display: flex;
-    place-items: flex-start;
-    flex-wrap: wrap;
-  }
+.error {
+  color: #b91c1c;
 }
 </style>

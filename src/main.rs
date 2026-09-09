@@ -1,13 +1,20 @@
-use snotify::error_handling::*;
-use std::time::Duration;
-use std::{env, process};
+use serde::Serialize;
 
 const MAX_CLIENT_ERROR_COUNT: usize = 5;
 const DEFAULT_SPOTIFY_REQUEST_PERIOD: u64 = 5000;
 const ADDRESS_AND_PORT: &str = "127.0.0.1:6767";
 
-async fn homepage() -> &'static str {
-    "Hello world"
+#[derive(Serialize)]
+struct Message {
+    text: String,
+    count: usize,
+}
+
+async fn hello() -> axum::Json<Message> {
+    axum::Json(Message {
+        text: "Hello from Rust".to_string(),
+        count: 42,
+    })
 }
 
 #[tokio::main]
@@ -24,7 +31,7 @@ async fn main() {
 
     log::info!("listening on http://{}", listener.local_addr().unwrap());
 
-    let app = axum::Router::new().route("/api/hello", axum::routing::get(homepage));
+    let app = axum::Router::new().route("/api/hello", axum::routing::get(hello));
     tokio::task::spawn(async move { axum::serve(listener, app).await.unwrap() });
 
     loop {}
