@@ -4,16 +4,31 @@ use std::{env, process};
 
 const MAX_CLIENT_ERROR_COUNT: usize = 5;
 const DEFAULT_SPOTIFY_REQUEST_PERIOD: u64 = 5000;
-const ADDRESS_AND_PORT: &str = "localhost";
+const ADDRESS_AND_PORT: &str = "127.0.0.1:0";
+
+async fn homepage() -> &'static str {
+    "Hello world"
+}
 
 #[tokio::main]
 async fn main() {
-    println!(
-        "cargo run --bin record [playlist name] [key1] [value1] [key2] [value2] ... to update the playlist database"
-    );
     env_logger::init();
 
-    let args: Vec<String> = env::args().collect();
+    log::info!(
+        "cargo run --bin record [playlist name] [key1] [value1] [key2] [value2] ... to update the playlist database"
+    );
+
+    let listener = tokio::net::TcpListener::bind(ADDRESS_AND_PORT)
+        .await
+        .unwrap();
+
+    log::info!("listening on http://{}", listener.local_addr().unwrap());
+
+    let app = axum::Router::new().route("/", axum::routing::get(homepage));
+    tokio::task::spawn(async move { axum::serve(listener, app).await.unwrap() });
+
+    loop {}
+    /*     let args: Vec<String> = env::args().collect();
     assert!(
         args.len() == 2,
         "Please provide a playlist name \
@@ -24,13 +39,12 @@ async fn main() {
     let path = snotify::make_playlist_path(&args[1]);
 
     let mut engine = snotify::Engine::new(path).unwrap_or_else(|error| {
-        eprintln!("Error: {}", error);
+        log::error!("Error: {}", error);
         process::exit(1);
     });
 
     let spotify_player = snotify::spotify::Player::new().await;
     let mut consecutive_client_error_count = 0_usize;
-    //let mut server = snotify::ipc::Server::new(ADDRESS_AND_PORT);
 
     loop {
         match spotify_player.get_currently_playing().await {
@@ -47,12 +61,12 @@ async fn main() {
                 tokio::time::sleep(Duration::from_millis(DEFAULT_SPOTIFY_REQUEST_PERIOD)).await;
             }
             Err(error) => {
-                eprintln!("Error: {}", error);
+                log::error!("Error: {}", error);
                 if let SnotifyError::ClientError(_) = error {
                     consecutive_client_error_count += 1;
 
                     if consecutive_client_error_count >= MAX_CLIENT_ERROR_COUNT {
-                        eprintln!("Max client error count reached. Stopping the app.");
+                        log::error!("Max client error count reached. Stopping the app.");
                         process::exit(1);
                     }
                 }
@@ -64,5 +78,5 @@ async fn main() {
                 }
             }
         }
-    }
+    } */
 }
