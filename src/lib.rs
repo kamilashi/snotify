@@ -1,4 +1,4 @@
-use std::{collections::HashMap, fmt};
+use std::{collections::BTreeMap, fmt};
 
 // once there are proper runners this should disintegrate
 pub use error_handling::*;
@@ -15,7 +15,7 @@ pub mod ipc;
 pub mod mock;
 pub mod spotify;
 
-type Playlist = HashMap<String, Song>;
+type Playlist = BTreeMap<String, Song>;
 
 pub const DATA_PATH: &str = "data/";
 
