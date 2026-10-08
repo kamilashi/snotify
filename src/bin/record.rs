@@ -2,6 +2,7 @@ use snotify::UserData;
 use std::env;
 use tokio;
 
+// #TODO: add an option to patch a song entry (keep the user data, overwrite the rest)
 #[tokio::main]
 async fn main() {
     env_logger::init();

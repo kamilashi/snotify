@@ -30,10 +30,10 @@ pub struct Song {
     pub name: Option<String>,
     pub artist: Option<String>,
     pub duration_ms: Option<u64>,
-    pub user_data: Vec<UserData>, // #todo: use Option
+    pub user_data: Vec<UserData>,
 }
 
-// #todo get rid of
+// #TODO get rid of
 impl Song {
     pub fn print_preview(&self, prefix_msg: &str) {
         println!("{}", prefix_msg);

@@ -3,6 +3,11 @@ This project aims to create a note display client for spotify playlists and bund
 
 - Snotify (main app): poll spotify for current song and display notes from the song(playlist) database for the currentty playing song id
 ```
+    cargo run <playlist_name>
+```
+or
+
+```
     cargo run --bin snotify <playlist_name>
 ```
 The playlist_name srgument specifies the database file to load.
@@ -12,7 +17,7 @@ The playlist_name srgument specifies the database file to load.
 ```
     cargo run --bin record <playlist_name> <key1> <value1> <key2> <value2> ...
 ```
-the playlist name must be followed by an even number of arguments, which will stored as arbitrary key-value pairs in the UserData section of the song info inside the song database.
+the playlist name must be followed by an even number of arguments, which will stored as arbitrary key-value pairs in the UserData section of the song info inside the song database. Existing database entries are overwritten.
 
 - Mock replay client: 
 - Mock replay server: 

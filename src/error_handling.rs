@@ -27,7 +27,7 @@ pub enum SnotifyError {
     Unknown,
 }
 
-// #todo use macros
+// #TODO use macros
 impl fmt::Display for SnotifyError {
     fn fmt(&self, f: &mut fmt::Formatter) -> fmt::Result {
         match self {

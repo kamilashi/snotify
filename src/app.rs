@@ -19,8 +19,6 @@ use tower_http::services::{ServeDir, ServeFile};
 const ADDRESS_AND_PORT: &str = "127.0.0.1:6767";
 const BASE_API_ENDPOINT: &str = "snotify";
 
-// #todo: do not use snotify type here, pass serialized Json opbject
-
 async fn get_song_stream(
     axum::extract::State(mut rx): axum::extract::State<Receiver<Option<Song>>>,
 ) -> Sse<impl Stream<Item = Result<Event, axum::Error>>> {

@@ -27,9 +27,9 @@ impl Player {
 
     pub fn start_async(&self) -> Result<(), SnotifyError> {
         let player_impl = self.player_impl.clone();
-        // #todo: get the spawner from client code
+        // #TODO: get the spawner from client code
         tokio::spawn(async move { player_impl.run().await });
-        // #todo: Debug
+        // #TODO: Debug
         println!("Started mock player player");
         Ok(())
     }
@@ -143,13 +143,13 @@ impl ArcPlayer {
 
                         self.current_song_channel.send_replace(song_update);
 
-                        // #todo: get the sleeper from client code
+                        // #TODO: get the sleeper from client code
                         tokio::time::sleep(Duration::from_millis(period_ms.clone())).await;
                     }
                 }
             }
         } else {
-            // #todo: implement Generic(String/Box Error)
+            // #TODO: implement Generic(String/Box Error)
             eprintln!("Error: Cannot use run function without an actual playlist to run");
             Err(SnotifyError::Unknown)
         }

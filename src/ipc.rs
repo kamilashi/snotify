@@ -3,6 +3,7 @@ use tokio::io::{AsyncBufReadExt, AsyncWriteExt, BufReader};
 use tokio::net::{TcpListener, TcpStream};
 use tokio::task::JoinSet;
 
+// #TODO: hide behind a local testing module (mock?)
 pub struct Server {
     listener: TcpListener,
     tasks: JoinSet<()>,
@@ -10,6 +11,7 @@ pub struct Server {
     current_connected_clients: u32,
 }
 
+// #TODO: serdes bytes instead of http frames
 type HttpRequest = (Vec<String>, Option<usize>);
 
 impl Server {
@@ -34,7 +36,7 @@ impl Server {
 
             if self.current_connected_clients == self.max_client_count {
                 println!("Max client count reached!");
-                break; // #todo :revisit
+                break; // #TODO :revisit
             }
         }
 
