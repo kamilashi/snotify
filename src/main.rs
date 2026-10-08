@@ -1,26 +1,9 @@
-use serde::Serialize;
 use snotify::error_handling::*;
 use std::time::Duration;
 use std::{env, process};
-use tower_http::services::{ServeDir, ServeFile};
 
 const MAX_CLIENT_ERROR_COUNT: usize = 5;
 const DEFAULT_SPOTIFY_REQUEST_PERIOD: u64 = 5000;
-const ADDRESS_AND_PORT: &str = "127.0.0.1:6767";
-
-#[derive(Serialize)]
-struct Message {
-    text: String,
-    count: usize,
-}
-
-async fn get_song(
-    axum::extract::State(rx): axum::extract::State<
-        tokio::sync::watch::Receiver<Option<snotify::Song>>,
-    >,
-) -> axum::Json<Option<snotify::Song>> {
-    axum::Json(rx.borrow().clone())
-}
 
 #[tokio::main]
 async fn main() {
@@ -30,26 +13,10 @@ async fn main() {
         "cargo run --bin record [playlist name] [key1] [value1] [key2] [value2] ... to update the playlist database"
     );
 
-    let listener = tokio::net::TcpListener::bind(ADDRESS_AND_PORT)
-        .await
-        .unwrap();
-
-    let addresss = listener.local_addr().unwrap();
-    let (tx, rx) = tokio::sync::watch::channel(None::<snotify::Song>);
-
-    let app = axum::Router::new()
-        .route("/snotify", axum::routing::get(get_song))
-        .with_state(rx)
-        .fallback_service(ServeDir::new("static").fallback(ServeFile::new("static/index.html")));
-
-    tokio::task::spawn(async move { axum::serve(listener, app).await.unwrap() });
-
-    log::info!("listening on http://{}/snotify", addresss);
-
     let args: Vec<String> = env::args().collect();
     assert!(
         args.len() == 2,
-        "Please provide a playlist name \
+        "Please provide a playlist name, e.g.  \
         Current arg length: {:?}",
         args
     );
@@ -61,6 +28,7 @@ async fn main() {
         process::exit(1);
     });
 
+    let tx = snotify::app::create_backend().await;
     let spotify_player = snotify::spotify::Player::new().await;
     let mut consecutive_client_error_count = 0_usize;
 
@@ -75,7 +43,10 @@ async fn main() {
                             song.print_preview("Currently playing:");
                             tx.send_replace(Some(song));
                         }
-                        None => song.print_preview("Could not find database entry for song:"),
+                        None => {
+                            song.print_preview("Could not find database entry for song:");
+                            tx.send_replace(Some(song));
+                        }
                     }
                 }
 

@@ -9,6 +9,7 @@ pub use rspotify::{
 };
 use serde::{Deserialize, Serialize};
 
+pub mod app;
 pub mod error_handling;
 pub mod ipc;
 pub mod mock;
