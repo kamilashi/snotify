@@ -1,32 +1,51 @@
 <script setup lang="ts">
-import { ref, onMounted } from 'vue'
+import { ref, onMounted, onUnmounted } from 'vue'
 
-interface Message {
-  text: string
-  count: number
+interface UserData {
+  key : string,
+  value : string
 }
 
-const message = ref<Message | null>(null)
-const error = ref<string | null>(null)
+interface Song {
+  name: string | null,
+  artist: string | null,
+  duration_ms: number | null,
+  user_data: UserData[], 
+}
 
-onMounted(async () => {
-  try {
-    const res = await fetch('/api/hello')
-    if (!res.ok) throw new Error(`HTTP ${res.status}`)
-    message.value = (await res.json()) as Message
-  } catch (e: unknown) {
-    error.value = e instanceof Error ? e.message : 'request failed'
+const song = ref<Song | null>(null)
+const error = ref<string | null>(null)
+let es: EventSource | null = null
+
+onMounted(() => {
+  es = new EventSource('/snotify/current')
+  es.onmessage = (e) => {
+    song.value = JSON.parse(e.data) as Song | null
+    error.value = null
+  }
+  es.onerror = () => {
+    error.value = 'connection lost, retrying…'
   }
 })
+
+onUnmounted(() => es?.close())
 </script>
 
 <template>
   <main>
     <p v-if="error" class="error">Error: {{ error }}</p>
-    <p v-else-if="!message">Loading…</p>
+    <p v-else-if="!song">Loading…</p>
     <template v-else>
-      <h1 class="headline">{{ message.text }}</h1>
-      <p>Count: <span class="count">{{ message.count }}</span></p>
+      <h1 class="headline">{{ song.name }}</h1>
+      <p>Artist: <span class="row">{{ song.artist }}</span></p>
+      <p>Duration: <span class="row">{{ song.duration_ms }}</span></p>
+      <li
+        v-for="pair in song.user_data"
+        :key="pair.key"
+        class="flex items-center gap-2"
+      >
+      <span>{{ pair.key }}</span>:<span>{{ pair.value }}</span>
+    </li>
     </template>
   </main>
 </template>
@@ -47,7 +66,7 @@ main {
   color: #d2dcf2;
   background-color: #0945d3;
 }
-.count {
+.row {
   font-variant-numeric: tabular-nums;
   color: #0369a1;
 }

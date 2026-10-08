@@ -1,5 +1,15 @@
+use async_stream::try_stream;
+
 use super::*;
-use axum::Router;
+use axum::{
+    response::{
+        sse::{Event, KeepAlive},
+        Sse,
+    },
+    routing::get,
+    Router,
+};
+use futures::Stream;
 use tokio::{
     net::TcpListener,
     sync::watch::{channel, Receiver, Sender},
@@ -10,17 +20,29 @@ const ADDRESS_AND_PORT: &str = "127.0.0.1:6767";
 const BASE_API_ENDPOINT: &str = "snotify";
 
 // #todo: do not use snotify type here, pass serialized Json opbject
-async fn get_song(
-    axum::extract::State(rx): axum::extract::State<tokio::sync::watch::Receiver<Option<Song>>>,
-) -> axum::Json<Option<Song>> {
-    axum::Json(rx.borrow().clone())
+
+async fn get_song_stream(
+    axum::extract::State(mut rx): axum::extract::State<Receiver<Option<Song>>>,
+) -> Sse<impl Stream<Item = Result<Event, axum::Error>>> {
+    Sse::new(try_stream! {
+        loop {
+            let song = rx.borrow_and_update().clone();
+            if let Some(song) = song {
+                yield Event::default().json_data(song)?;
+            }
+            if rx.changed().await.is_err() {
+                break;
+            }
+         }
+    })
+    .keep_alive(KeepAlive::default())
 }
 
 fn create_router(rx: Receiver<Option<Song>>) -> Router {
-    axum::Router::new()
+    Router::new()
         .route(
-            &format!("/{}", BASE_API_ENDPOINT),
-            axum::routing::get(get_song),
+            &format!("/{}/current", BASE_API_ENDPOINT),
+            get(get_song_stream),
         )
         .with_state(rx)
         .fallback_service(ServeDir::new("static").fallback(ServeFile::new("static/index.html")))
@@ -36,7 +58,7 @@ pub async fn create_backend() -> Sender<Option<Song>> {
 
     tokio::task::spawn(async move { axum::serve(listener, router).await.unwrap() });
 
-    log::info!("listening on http://{}/{}", addresss, BASE_API_ENDPOINT);
+    log::info!("serving on http://{}", addresss);
 
     tx
 }
