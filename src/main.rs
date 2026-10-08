@@ -1,4 +1,8 @@
 use serde::Serialize;
+use snotify::error_handling::*;
+use std::time::Duration;
+use std::{env, process};
+use tower_http::services::{ServeDir, ServeFile};
 
 const MAX_CLIENT_ERROR_COUNT: usize = 5;
 const DEFAULT_SPOTIFY_REQUEST_PERIOD: u64 = 5000;
@@ -10,11 +14,12 @@ struct Message {
     count: usize,
 }
 
-async fn hello() -> axum::Json<Message> {
-    axum::Json(Message {
-        text: "Hello from Rust".to_string(),
-        count: 42,
-    })
+async fn get_song(
+    axum::extract::State(rx): axum::extract::State<
+        tokio::sync::watch::Receiver<Option<snotify::Song>>,
+    >,
+) -> axum::Json<Option<snotify::Song>> {
+    axum::Json(rx.borrow().clone())
 }
 
 #[tokio::main]
@@ -29,13 +34,19 @@ async fn main() {
         .await
         .unwrap();
 
-    log::info!("listening on http://{}", listener.local_addr().unwrap());
+    let addresss = listener.local_addr().unwrap();
+    let (tx, rx) = tokio::sync::watch::channel(None::<snotify::Song>);
 
-    let app = axum::Router::new().route("/api/hello", axum::routing::get(hello));
+    let app = axum::Router::new()
+        .route("/snotify", axum::routing::get(get_song))
+        .with_state(rx)
+        .fallback_service(ServeDir::new("static").fallback(ServeFile::new("static/index.html")));
+
     tokio::task::spawn(async move { axum::serve(listener, app).await.unwrap() });
 
-    loop {}
-    /*     let args: Vec<String> = env::args().collect();
+    log::info!("listening on http://{}/snotify", addresss);
+
+    let args: Vec<String> = env::args().collect();
     assert!(
         args.len() == 2,
         "Please provide a playlist name \
@@ -60,7 +71,10 @@ async fn main() {
 
                 if engine.try_update(id) {
                     match engine.get_song_data() {
-                        Some(song) => song.print_preview("Currently playing:"),
+                        Some(song) => {
+                            song.print_preview("Currently playing:");
+                            tx.send_replace(Some(song));
+                        }
                         None => song.print_preview("Could not find database entry for song:"),
                     }
                 }
@@ -85,5 +99,5 @@ async fn main() {
                 }
             }
         }
-    } */
+    }
 }

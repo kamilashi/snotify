@@ -25,8 +25,8 @@ onMounted(async () => {
     <p v-if="error" class="error">Error: {{ error }}</p>
     <p v-else-if="!message">Loading…</p>
     <template v-else>
-      <h1>{{ message.text }}</h1>
-      <p>Count: {{ message.count }}</p>
+      <h1 class="headline">{{ message.text }}</h1>
+      <p>Count: <span class="count">{{ message.count }}</span></p>
     </template>
   </main>
 </template>
@@ -34,10 +34,21 @@ onMounted(async () => {
 <style scoped>
 main {
   font-family: system-ui, sans-serif;
-  padding: 2rem;
-  max-width: 40rem;
+  margin: 0;
+  padding: 0;
+  width: 100% ;
+  height: 100% ;
+  background-color: #ffffff;
 }
 .error {
   color: #b91c1c;
+}
+.headline {
+  color: #d2dcf2;
+  background-color: #0945d3;
+}
+.count {
+  font-variant-numeric: tabular-nums;
+  color: #0369a1;
 }
 </style>
