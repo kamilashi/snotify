@@ -2,4 +2,4 @@
 /static
 /.env
 /.vscode
-
+/.spotify_token_cache.json

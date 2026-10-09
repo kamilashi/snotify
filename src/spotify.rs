@@ -1,5 +1,5 @@
 use super::*;
-use rspotify::clients::OAuthClient;
+use rspotify::{clients::OAuthClient, Config};
 
 const DEFAULT_RETRY_AFTER_S: u64 = 30;
 pub struct Player {
@@ -9,7 +9,11 @@ pub struct Player {
 async fn authorize() -> AuthCodeSpotify {
     let creds = Credentials::from_env().unwrap();
     let oauth = OAuth::from_env(scopes!("user-read-currently-playing")).unwrap();
-    let spotify: AuthCodeSpotify = AuthCodeSpotify::new(creds, oauth);
+    let config = Config {
+        token_cached: true,
+        ..Default::default()
+    };
+    let spotify: AuthCodeSpotify = AuthCodeSpotify::with_config(creds, oauth, config);
 
     let url = spotify.get_authorize_url(false).unwrap();
     spotify.prompt_for_token(&url).await.unwrap();
