@@ -44,6 +44,7 @@ onUnmounted(() => es?.close())
 <style scoped>
 main {
   font-family: system-ui, sans-serif;
+  display: flex;
   margin-top: auto;
   margin-left: auto;
   padding: 0;
