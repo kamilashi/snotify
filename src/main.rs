@@ -16,7 +16,7 @@ async fn main() {
     let args: Vec<String> = env::args().collect();
     assert!(
         args.len() == 2,
-        "Please provide a playlist name, e.g.  \
+        "Please provide a playlist name, e.g. -- test \
         Current arg length: {:?}",
         args
     );
