@@ -70,7 +70,7 @@ impl Player {
     }
 
     pub async fn get_currently_playing(&self) -> Result<(Song, String), SnotifyError> {
-        log::debug!("DEBUG REQUESTING SPOTIFY");
+        tracing::debug!("DEBUG REQUESTING SPOTIFY");
         match self.spotify.current_playing(None, None::<Vec<_>>).await {
             Ok(track) => {
                 let context = track.ok_or(SnotifyError::NoCurrentlyPlayingContext)?;

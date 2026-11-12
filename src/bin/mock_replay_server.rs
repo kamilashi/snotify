@@ -1,5 +1,5 @@
-use log::{debug, error, info, warn};
 use snotify;
+use tracing::{debug, error, info, warn};
 
 #[tokio::main]
 async fn main() {

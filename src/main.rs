@@ -9,7 +9,7 @@ const DEFAULT_SPOTIFY_REQUEST_PERIOD: u64 = 5000;
 async fn main() {
     env_logger::init();
 
-    log::info!(
+    tracing::info!(
         "cargo run --bin record [playlist name] [key1] [value1] [key2] [value2] ... to update the playlist database"
     );
 
@@ -24,7 +24,7 @@ async fn main() {
     let path = snotify::make_playlist_path(&args[1]);
 
     let mut engine = snotify::Engine::new(path).unwrap_or_else(|error| {
-        log::error!("Error: {}", error);
+        tracing::error!("Error: {}", error);
         process::exit(1);
     });
 
@@ -53,12 +53,12 @@ async fn main() {
                 tokio::time::sleep(Duration::from_millis(DEFAULT_SPOTIFY_REQUEST_PERIOD)).await;
             }
             Err(error) => {
-                log::error!("Error: {}", error);
+                tracing::error!("Error: {}", error);
                 if let SnotifyError::ClientError(_) = error {
                     consecutive_client_error_count += 1;
 
                     if consecutive_client_error_count >= MAX_CLIENT_ERROR_COUNT {
-                        log::error!("Max client error count reached. Stopping the app.");
+                        tracing::error!("Max client error count reached. Stopping the app.");
                         process::exit(1);
                     }
                 }

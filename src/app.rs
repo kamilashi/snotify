@@ -56,7 +56,7 @@ pub async fn create_backend() -> Sender<Option<Song>> {
 
     tokio::task::spawn(async move { axum::serve(listener, router).await.unwrap() });
 
-    log::info!("serving on http://{}", addresss);
+    tracing::info!("serving on http://{}", addresss);
 
     tx
 }
