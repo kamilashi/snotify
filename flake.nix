@@ -22,16 +22,23 @@
                     version = manifest.version;
                     cargoLock.lockFile = ./Cargo.lock;
                     src = pkgs.lib.cleanSource ./.;
+                    nativeBuildInputs = with pkgs; [ pkg-config ]; 
+                    buildInputs = with pkgs; [
+                      openssl 
+                    ];
                   };
 
         devShells.default = pkgs.mkShellNoCC {
-          inputsFrom = [ pkgs ];
-          name = "snotify_dev_shell";
+          inputsFrom = [ self.packages.${system}.default ];
+          name = manifest.name + "_dev_shell";
           buildInputs = with pkgs; [
-            rust-analyzer # LSP Server
-            rustfmt       # Formatter
-            clippy        # Linter
+            rust-analyzer 
+            rustfmt       
+            clippy
+            zsh       
+            zsh-completions
           ];
+          RUST_LOG="info";
         };
       }
     );

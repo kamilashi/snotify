@@ -1,5 +1,6 @@
 /target
 /static
+/result
 /.env
 /.vscode
 /.spotify_token_cache.json
