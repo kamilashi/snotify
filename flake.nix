@@ -14,20 +14,24 @@
       system:
       let
         pkgs = import nixpkgs { inherit system; };
+        manifest = (pkgs.lib.importTOML ./Cargo.toml).package;
       in
       {
-        packages.${system} = {
-            snotify_rust = pkgs.rustPlatform.buildRustPackage rec {
-                      pname = "snotify_rust";
-                      version = "0.1";
-                      cargoLock.lockFile = ./Cargo.lock;
-                      src = pkgs.lib.cleanSource ./.;
-                    }
-            default = self.packages.${system}.snotify_rust;
-        };
+        packages.default = pkgs.rustPlatform.buildRustPackage rec {
+                    pname = manifest.name;
+                    version = manifest.version;
+                    cargoLock.lockFile = ./Cargo.lock;
+                    src = pkgs.lib.cleanSource ./.;
+                  };
 
-        devShells.${system}.default = pkgs.mkShellNoCC {
+        devShells.default = pkgs.mkShellNoCC {
+          inputsFrom = [ pkgs ];
           name = "snotify_dev_shell";
+          buildInputs = with pkgs; [
+            rust-analyzer # LSP Server
+            rustfmt       # Formatter
+            clippy        # Linter
+          ];
         };
       }
     );
