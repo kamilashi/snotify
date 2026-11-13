@@ -2,8 +2,7 @@
 set -euo pipefail
 
 echo "Launching frontend + backend"
-
-cd "$(dirname "$0")"
+echo "Running from ${PWD}"
 
 (cd ./frontend && npm run build)
 

@@ -15,13 +15,25 @@
       let
         pkgs = import nixpkgs { inherit system; };
         manifest = (pkgs.lib.importTOML ./Cargo.toml).package;
+        fs = pkgs.lib.fileset;
+        backendSrc = fs.unions [
+          ./src/.
+          ./Cargo.lock
+          ./Cargo.toml
+        ];
+        frontendSrc = fs.unions [
+          ./frontend/src/.
+        ];
       in
       {
         packages.backend = pkgs.rustPlatform.buildRustPackage rec {
           pname = manifest.name;
           version = manifest.version;
           cargoLock.lockFile = ./Cargo.lock;
-          src = pkgs.lib.cleanSource ./.;
+          src = fs.toSource {
+            root = ./.;
+            fileset = backendSrc;
+          };
           nativeBuildInputs = with pkgs; [ pkg-config ];
           buildInputs = with pkgs; [
             openssl
