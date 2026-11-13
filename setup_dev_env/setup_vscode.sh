@@ -10,6 +10,8 @@ fi
 declare -r vscode_ext_dir="${dir_prefix}/.vscode"
 declare -r vscode_ext_path="${vscode_ext_dir}/extensions.json"
 declare -r vscode_settings_path="${vscode_ext_dir}/settings.json"
+declare -r envrc_path="${dir_prefix}/.envrc"
+
 echo "Setting up VSCode dev environment..."
 
 if ! [ -d ${vscode_ext_dir} ]; then
@@ -64,3 +66,12 @@ cat > "$vscode_settings_path" <<'EOF'
     }
 }
 EOF
+
+
+echo "Setting up automatic direnv shell mounting"
+echo "${envrc_path} will be overwritten!"
+echo "press Enter to continue or Ctrl + C to exit"
+read -r -p ""
+echo "use flake" > ${envrc_path}
+
+direnv allow
