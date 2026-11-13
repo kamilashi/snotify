@@ -28,6 +28,11 @@
                     ];
                   };
 
+        packages.setup_vscode = pkgs.writeShellApplication {
+          name = "setup_vscode";
+          text = builtins.readFile ./setup_dev_env/setup_vscode.sh;
+        };
+
         devShells.default = pkgs.mkShellNoCC {
           inputsFrom = [ self.packages.${system}.default ];
           name = manifest.name + "_dev_shell";
