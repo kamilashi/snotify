@@ -16,11 +16,11 @@ create_or_overwrite() {
     fi
 }
 
-declare dir_prefix="."
-
-if [[ "$(basename "$PWD")" == "setup_dev_env" ]]; then
-    dir_prefix=".." 
-fi
+# Module root = nearest parent dir containing the setup folder (this scritp's dir)
+declare dir_prefix="$PWD"
+while [[ ! -e "${dir_prefix}/setup_dev_env" && "${dir_prefix}" != "/" ]]; do
+    dir_prefix="$(dirname "${dir_prefix}")"
+done
 
 declare -r vscode_ext_dir="${dir_prefix}/.vscode"
 declare -r vscode_ext_path="${vscode_ext_dir}/extensions.json"
@@ -30,11 +30,11 @@ declare -r envrc_path="${dir_prefix}/.envrc"
 
 echo "Setting up VSCode dev environment..."
 
-if ! [ -d ${vscode_ext_dir} ]; then
-    mkdir -p ${vscode_ext_dir}   
+if ! [ -d "${vscode_ext_dir}" ]; then
+    mkdir -p "${vscode_ext_dir}"   
 fi
 
-create_or_overwrite ${vscode_ext_path}
+create_or_overwrite "${vscode_ext_path}"
 
 cat > "$vscode_ext_path" <<'EOF'
 {
@@ -49,7 +49,7 @@ cat > "$vscode_ext_path" <<'EOF'
 }
 EOF
 
-create_or_overwrite ${vscode_settings_path}
+create_or_overwrite "${vscode_settings_path}"
 
 cat > "$vscode_settings_path" <<'EOF'
 {
@@ -71,7 +71,7 @@ cat > "$vscode_settings_path" <<'EOF'
 }
 EOF
 
-create_or_overwrite ${vscode_config_path}
+create_or_overwrite "${vscode_config_path}"
 
 cat > "$vscode_config_path" <<'EOF'
 root = true
@@ -94,12 +94,12 @@ trim_trailing_whitespace = false
 EOF
 
 echo "Setting up automatic direnv shell mounting"
-if [ -e ${envrc_path} ]; then
+if [ -e "${envrc_path}" ]; then
     echo "${envrc_path} will be overwritten!"
     echo "press Enter to continue or Ctrl + C to exit"
     read -r -p ""
 fi
 
-echo "use flake" > ${envrc_path}
+echo "use flake" > "${envrc_path}"
 
 direnv allow
